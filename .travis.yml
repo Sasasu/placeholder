@@ -1,0 +1,15 @@
+language: rust
+sudo: false
+cache: cargo
+rust:
+  - nightly
+script:
+  - cargo test --verbose --all --locked
+
+matrix:
+  include:
+
+  - rust: nightly
+    script:
+    - rustup component add rustfmt-preview --toolchain nightly
+    - cargo +nightly fmt --all -- --check

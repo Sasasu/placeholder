@@ -11,3 +11,13 @@ Cargo.lock
 
 /target
 **/*.rs.bk
+
+# c library
+*.o
+
+# ide
+*.iml
+.idea
+
+*.yaml
+!config.example.yaml

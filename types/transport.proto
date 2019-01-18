@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+message PackageShard {
+  // only 0-127, (1<<8) used for protobuf various flag
+  uint32 ttl = 1;
+  // raw IP segment, include source address, destination address
+  bytes package = 2;
+}
+
+// one Node can be described as
+// 1. sub_net_{v4,v6}
+// 2. net_mask_{v4,v6}
+// 3. who own then sub_net(the node name)
+// 4. the distance to this node
+message AddNode {
+  bytes sub_net_v4 = 1;
+  uint32 net_mask_v4 = 2;
+  bytes sub_net_v6 = 3;
+  uint32 net_mask_v6 = 4;
+  string name = 5;
+  int32 jump = 6;
+}
+
+// repeated wrapper for AddNode
+message AddNodeRequest { repeated AddNode nodes = 1; }
+
+// delete those node from network
+message DelNodeRequest { repeated string nodes = 1; }
+
+// a node
+message NodeAddress {
+  string name = 1;
+  // where can other node connect
+  string host = 2;
+  // which port this node use
+  int32 port = 4;
+}
+
+// repeated wrapper for NodeAddress
+message ShareNode { repeated NodeAddress nodes = 1; }
+
+message PingPong { string name = 1; }
+
+message WhoHasNode { repeated string name = 1; }
+
+message Payload {
+  oneof payload {
+    // look up route table, send package to next node
+    PackageShard package = 1;
+    // add some node to route table
+    AddNodeRequest add_node = 3;
+    // del some node (by name)
+    DelNodeRequest del_node = 4;
+    // tell this node, what node i known
+    ShareNode share_node = 5;
+    WhoHasNode who_has_node = 6;
+    PingPong ping = 7;
+  }
+}

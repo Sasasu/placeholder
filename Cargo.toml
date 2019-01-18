@@ -3,5 +3,34 @@ name = "placeholder"
 version = "0.1.0"
 authors = ["Sasasu <su@sasasu.me>"]
 edition = "2018"
+build = "build.rs"
+readme = "README.md"
 
 [dependencies]
+# syntax and fundamental lib
+fnv = "1"
+rand = "0.6"
+libc = "0.2"
+lazy_static = "1.2"
+radix_trie =  { git = "https://github.com/Sasasu/rust_radix_trie" }
+
+# cli interface
+clap = "2"
+log = "0.4"
+env_logger = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+
+# networking
+protobuf = "2.3"
+openssl = "0.10"
+openssl-sys = "0.9"
+
+# async
+tokio = "0.1"
+tokio-io = "0.1"
+tokio-udp = "0.1"
+
+[build-dependencies]
+cc = "1.0"
+protobuf-codegen-pure = "2.3"

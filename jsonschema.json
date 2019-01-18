@@ -1,0 +1,66 @@
+{
+  "$id": "https://example.com/address.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "schema for placeholder config",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "node name"
+    },
+    "servers": {
+      "type": "array",
+      "description": "the upstream server",
+      "items": [
+        {
+          "type": "object",
+          "description": "address-port object",
+          "properties": {
+            "port": {
+              "type": "integer",
+              "description": "server port"
+            },
+            "address": {
+              "type": "string",
+              "description": "server address"
+            },
+            "name": {
+              "type": "string",
+              "description": "server name"
+            }
+          }
+        }
+      ]
+    },
+    "device_name": {
+      "type": "string",
+      "description": "the device name like \"ph0\""
+    },
+    "device_type": {
+      "type": "string",
+      "description": "the device type",
+      "enum": [
+        "tap",
+        "tun"
+      ]
+    },
+    "port": {
+      "type": "integer",
+      "description": "post to use, both TCP and UDP",
+      "maximum": 65536,
+      "minimum": 1
+    },
+    "subnet": {
+      "type": "string",
+      "description": "like 10.0.0.0/26"
+    },
+    "ifup": {
+      "type": "string",
+      "description": "the command open device and set ip, $INTERFACE $IP_ADDR $NET_MASK can be used"
+    },
+    "ifdown": {
+      "type": "string",
+      "description": "the command to close device"
+    }
+  }
+}

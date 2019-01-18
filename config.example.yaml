@@ -1,0 +1,13 @@
+device_name: ph0
+device_type: tun
+name: example
+servers:
+  - {address: 127.0.0.1, port: 6543, name: ph1}
+port: 7654
+subnet: 10.1.0.1/24
+ifup: |
+  ip link set $INTERFACE up
+  ip address add $IP_ADDR_MASK dev $INTERFACE
+ifdown: |
+  ip address del $IP_ADDR_MASK dev $INTERFACE
+  ip link set $INTERFACE down
