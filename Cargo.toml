@@ -1,0 +1,7 @@
+[package]
+name = "placeholder"
+version = "0.1.0"
+authors = ["Sasasu <su@sasasu.me>"]
+edition = "2018"
+
+[dependencies]
