@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
 
+pub mod peer;
+pub mod table;
+
 lazy_static! {
     static ref ROUTE_TABLE: Router = Router::new();
 }
@@ -118,7 +121,10 @@ impl Router {
                                 Peer::LocaleHost => continue,
                                 Peer::Addr(addr) => {
                                     info!("ask {} for {}", &k, &name);
-                                    return (Some(*addr), Message::WhoHasNodeWrite(vec![k.clone()]));
+                                    return (
+                                        Some(*addr),
+                                        Message::WhoHasNodeWrite(vec![k.clone()]),
+                                    );
                                 }
                             }
                         }
