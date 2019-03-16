@@ -1,74 +1,29 @@
-use crate::generated::transport as proto;
+pub mod peer;
+pub mod table;
+
+pub use self::peer::{Host, Peer};
+pub use self::table::{LikeRouter, Table};
 use crate::internal::message::Message;
 use crate::internal::package::Package;
 use log::*;
-use radix_trie::Trie;
-use radix_trie::TrieKey;
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
-
-pub mod peer;
-pub mod table;
 
 lazy_static! {
     static ref ROUTE_TABLE: Router = Router::new();
 }
 
-#[derive(Debug, Clone)]
-pub enum Peer {
-    Addr(SocketAddr),
-    LocaleHost,
-}
-
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct V4Addr(Ipv4Addr);
-
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct V6Addr(Ipv6Addr);
-
-impl TrieKey for V4Addr {
-    fn encode_bytes(&self) -> Vec<u8> {
-        let bits = self.0.octets();
-        vec![bits[0], bits[1], bits[2], bits[3]]
-    }
-}
-
-impl From<Ipv4Addr> for V4Addr {
-    fn from(a: Ipv4Addr) -> Self {
-        V4Addr { 0: a }
-    }
-}
-
-impl TrieKey for V6Addr {
-    fn encode_bytes(&self) -> Vec<u8> {
-        let bits = self.0.octets();
-        vec![
-            bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits[6], bits[7], bits[8],
-            bits[9], bits[10], bits[11], bits[12], bits[13], bits[14], bits[15],
-        ]
-    }
-}
-
-impl From<Ipv6Addr> for V6Addr {
-    fn from(a: Ipv6Addr) -> Self {
-        V6Addr { 0: a }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct Router {
-    ipv4_table: RwLock<Trie<V4Addr, String>>,
-    ipv6_table: RwLock<Trie<V6Addr, String>>,
-    peer_list: RwLock<HashMap<String, Vec<Peer>>>,
+    ipv4_table: RwLock<Table>,
+    ipv6_table: RwLock<Table>,
 }
 
 impl Router {
     pub fn new() -> Self {
         Router {
-            ipv6_table: Trie::new().into(),
-            ipv4_table: Trie::new().into(),
-            peer_list: HashMap::new().into(),
+            ipv6_table: Table::new().into(),
+            ipv4_table: Table::new().into(),
         }
     }
     pub fn get() -> &'static Self {
@@ -83,17 +38,17 @@ impl Router {
     ) -> (Option<SocketAddr>, Message) {
         match m.1 {
             Message::PackageShareRead(package, ttl) => match self.find_in_table(&package) {
-                Ok(Some(peer)) => match peer {
-                    Peer::Addr(addr) => {
+                Some(peer) => match peer.get_host() {
+                    Some(Host::Socket(addr)) => {
                         info!(
                             "{} -> {} route to real address {}",
                             package.source_address(),
                             package.destination_address(),
                             addr
                         );
-                        (Some(addr), Message::PackageShareWrite(package, ttl))
+                        (Some(*addr), Message::PackageShareWrite(package, ttl))
                     }
-                    Peer::LocaleHost => {
+                    Some(Host::Localhost) => {
                         info!(
                             "{} -> {} route to Self",
                             package.source_address(),
@@ -101,102 +56,58 @@ impl Router {
                         );
                         (None, Message::InterfaceWrite(package))
                     }
+                    None => {
+                        info!("{} -> {} find node in router but can'find edge to connect, drop package", package.source_address(), package.destination_address());
+                        (None, Message::DoNoting)
+                    }
                 },
-                Ok(None) => {
+                None => {
                     info!(
-                        "cannot find {} in route table, drop package",
+                        "{} -> {} not find in router table, drop package",
+                        package.source_address(),
                         package.destination_address()
                     );
                     (None, Message::DoNoting)
                 }
-                Err(name) => {
-                    info!(
-                        "find {} in route table, but not known where to go, asking now",
-                        &name
-                    );
-                    let random_node = self.peer_list.read().unwrap();
-                    for (k, v) in random_node.iter() {
-                        for i in v {
-                            match i {
-                                Peer::LocaleHost => continue,
-                                Peer::Addr(addr) => {
-                                    info!("ask {} for {}", &k, &name);
-                                    return (
-                                        Some(*addr),
-                                        Message::WhoHasNodeWrite(vec![k.clone()]),
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    info!("no one have {}, drop package", &name);
-                    (None, Message::DoNoting)
-                }
             },
-            Message::ShareNodeRead(nodes) => {
-                for node in nodes {
-                    let node_addr = SocketAddr::new(node.host.parse().unwrap(), node.port as u16);
-                    info!("add {}:{} to router table", node.name, node_addr);
-                    self.peer_list
-                        .write()
-                        .unwrap()
-                        .entry(node.name)
-                        .or_insert_with(Vec::new)
-                        .push(Peer::Addr(node_addr));
+            Message::AddNodeRead(node) => {
+                if m.0.is_none() {
+                    info!("can not add node for source none");
+                    return (None, Message::DoNoting);
                 }
-                (None, Message::DoNoting)
-            }
-            Message::AddNodeRead(nodes) => {
-                let mut find = vec![];
-                for node in nodes {
-                    // 1. insert peer
-                    self.add_peer(&node.name, Peer::Addr(m.0.expect("node addr is None")));
+                let source = m.0.unwrap();
 
-                    // 2. insert subnet
-                    if !node.sub_net_v4.is_empty() {
-                        let v4 = node.sub_net_v4;
-                        let v4 = Ipv4Addr::new(v4[0], v4[1], v4[2], v4[3]);
-                        self.insert_to_table(v4.into(), node.net_mask_v4, node.name.clone());
-                    }
-                    if !node.sub_net_v6.is_empty() {
-                        let v6 = node.sub_net_v6;
-                        let v6 = Ipv6Addr::from([
-                            v6[0], v6[1], v6[2], v6[3], v6[4], v6[5], v6[6], v6[7], v6[8], v6[9],
-                            v6[10], v6[11], v6[12], v6[13], v6[14], v6[15],
-                        ]);
-                        self.insert_to_table(v6.into(), node.net_mask_v6, node.name.clone());
-                    }
-
-                    // 3. make a diff.
-                    find.push(node.name.clone());
+                // 1. insert subnet
+                if !node.sub_net_v4.is_empty() {
+                    let v4 = node.sub_net_v4;
+                    let v4 = Ipv4Addr::new(v4[0], v4[1], v4[2], v4[3]);
+                    self.insert_to_table(
+                        v4.into(),
+                        node.net_mask_v4 as u16,
+                        node.name.clone(),
+                        Host::Socket(source),
+                    );
                 }
-                if find.len() == self.peer_list.read().unwrap().len() {
-                    (None, Message::DoNoting)
-                } else {
+                if !node.sub_net_v6.is_empty() {
+                    let v6 = node.sub_net_v6;
+                    let v6 = Ipv6Addr::from([
+                        v6[0], v6[1], v6[2], v6[3], v6[4], v6[5], v6[6], v6[7], v6[8], v6[9],
+                        v6[10], v6[11], v6[12], v6[13], v6[14], v6[15],
+                    ]);
+                    self.insert_to_table(
+                        v6.into(),
+                        node.net_mask_v6 as u16,
+                        node.name.clone(),
+                        Host::Socket(source),
+                    );
+                }
+
+                // 2. find out what we known but m.0 did not known
+                if false {
                     (m.0, Message::AddNodeWrite(unreachable!()))
+                } else {
+                    (None, Message::DoNoting)
                 }
-            }
-            Message::WhoHasNodeRead(names) => {
-                let mut node_address = vec![];
-                for name in names {
-                    let peer = Router::get().peer_list.read().unwrap().get(&name).cloned();
-                    if peer.is_none() {
-                        return (None, Message::DoNoting);
-                    }
-                    for p in peer.unwrap() {
-                        match p {
-                            Peer::LocaleHost => continue,
-                            Peer::Addr(addr) => {
-                                let mut address = proto::NodeAddress::new();
-                                address.set_name(name.clone());
-                                address.set_host(addr.ip().to_string());
-                                address.set_port(addr.port().into());
-                                node_address.push(address);
-                            }
-                        }
-                    }
-                }
-                (m.0, Message::ShareNodeWrite(node_address))
             }
             Message::DelNodeRead(nodes) => {
                 info!("del node {:?}", nodes);
@@ -206,19 +117,15 @@ impl Router {
                 self.router_message((None, Message::PackageShareRead(package, 127)))
             }
             Message::DoNoting => (None, Message::DoNoting),
-            Message::PingPongRead(_name) => {
-                return (
-                    m.0,
-                    Message::PingPongWrite("name-from-ping-pong".to_string()),
-                );
-            }
+            Message::PingPongRead(_name) => (
+                m.0,
+                Message::PingPongWrite("name-from-ping-pong".to_string()),
+            ),
             Message::InterfaceWrite(_)
             | Message::PingPongWrite(_)
             | Message::AddNodeWrite(_)
             | Message::PackageShareWrite(_, _)
-            | Message::DelNodeWrite(_)
-            | Message::ShareNodeWrite(_)
-            | Message::WhoHasNodeWrite(_) => {
+            | Message::DelNodeWrite(_) => {
                 info!("wrong message type send to router");
                 (None, Message::DoNoting)
             }
@@ -227,82 +134,54 @@ impl Router {
 }
 
 impl Router {
-    pub fn get_all_peer_for_send(&self) -> Vec<proto::AddNode> {
-        let v = vec![];
-        for (name, peer) in self.peer_list.read().unwrap().iter() {
-            let mut node = proto::AddNode::new();
-            node.set_name(name.clone());
-            // TODO
-            node.set_jump(1);
-        }
-        v
-    }
-    pub fn add_peer(&self, name: &str, peer: Peer) {
-        info!("add {} -> {:?} to peer list", name, peer);
-        self.peer_list
-            .write()
-            .unwrap()
-            .entry(name.to_string())
-            .or_insert_with(Vec::new)
-            .push(peer);
-    }
-    pub fn insert_to_table(&self, dest: IpAddr, _net_mask: u32, name: String) {
-        info!("add {} -> {:?} to router table", dest, name);
-        self.peer_list
-            .write()
-            .unwrap()
-            .entry(name.clone())
-            .or_insert_with(Vec::new);
-        match dest {
-            IpAddr::V4(v4_addr) => self
-                .ipv4_table
-                .write()
-                .unwrap()
-                .insert(v4_addr.into(), name),
-            IpAddr::V6(v6_addr) => self
-                .ipv6_table
-                .write()
-                .unwrap()
-                .insert(v6_addr.into(), name),
+    pub fn insert_to_table(&self, dest: IpAddr, mask: u16, name: String, host: Host) {
+        info!(
+            "add {}/{} -> {}:\"{:?}\" to router table",
+            dest, mask, name, host
+        );
+        let peer = Peer {
+            name,
+            host: vec![host],
         };
+
+        match dest {
+            IpAddr::V4(v4_addr) => {
+                self.ipv4_table
+                    .write()
+                    .unwrap()
+                    .insert(v4_addr.into(), mask, peer)
+            }
+            IpAddr::V6(v6_addr) => {
+                self.ipv6_table
+                    .write()
+                    .unwrap()
+                    .insert(v6_addr.into(), mask, peer)
+            }
+        }
+        .unwrap()
     }
 
-    pub fn find_in_table(&self, package: &Package) -> Result<Option<Peer>, String> {
+    pub fn find_in_table(&self, package: &Package) -> Option<Peer> {
         let dest = package.destination_address();
         match dest {
-            IpAddr::V4(v4) => {
-                if let Some(t) = self.ipv4_table.read().unwrap().get(&V4Addr { 0: v4 }) {
-                    match self.get_by_name(&t) {
-                        Some(peer) => return Ok(Some(peer)),
-                        None => return Err(t.clone()),
-                    }
-                } else {
-                    return Ok(None);
-                }
-            }
-            IpAddr::V6(v6) => {
-                if let Some(t) = self.ipv6_table.read().unwrap().get(&V6Addr { 0: v6 }) {
-                    match self.get_by_name(&t) {
-                        Some(peer) => return Ok(Some(peer)),
-                        None => return Err(t.clone()),
-                    }
-                } else {
-                    return Ok(None);
-                }
-            }
+            IpAddr::V4(v4) => match self.ipv4_table.read().unwrap().find(v4.into()) {
+                Some(t) => Some(t.clone()),
+                None => None,
+            },
+            IpAddr::V6(v6) => match self.ipv6_table.read().unwrap().find(v6.into()) {
+                Some(t) => Some(t.clone()),
+                None => None,
+            },
         }
     }
 
     pub fn get_by_name(&self, name: &str) -> Option<Peer> {
-        match self.peer_list.read().unwrap().get(name) {
-            None => None,
-            Some(v) => {
-                if v.is_empty() {
-                    None
-                } else {
-                    Some(v[0].clone())
-                }
-            }
+        if let Some(peer) = self.ipv4_table.read().unwrap().get_by_peer_name(name) {
+            return Some(peer);
         }
+        if let Some(peer) = self.ipv6_table.read().unwrap().get_by_peer_name(name) {
+            return Some(peer);
+        }
+        None
     }
 }
