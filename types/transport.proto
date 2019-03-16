@@ -8,16 +8,15 @@ message PackageShard {
 }
 
 // one Node can be described as
-// 1. sub_net_{v4,v6}
-// 2. net_mask_{v4,v6}
+// 1. sub_net
+// 2. net_mask
 // 3. who own then sub_net(the node name)
 // 4. the distance to this node
 // 5. where this node share from
 message Node {
-  bytes sub_net_v4 = 1;
-  uint32 net_mask_v4 = 2;
-  bytes sub_net_v6 = 3;
-  uint32 net_mask_v6 = 4;
+  bytes sub_net = 1;
+  uint32 net_mask = 2;
+
   string name = 5;
   int32 jump = 6;
 

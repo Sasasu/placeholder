@@ -1,14 +1,16 @@
 pub mod peer;
 pub mod table;
+#[cfg(test)]
+pub mod test;
 
 pub use self::peer::{Host, Peer};
 pub use self::table::{LikeRouter, Table};
+use crate::config::Config;
 use crate::internal::message::Message;
 use crate::internal::package::Package;
 use log::*;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
-use crate::config::Config;
 
 lazy_static! {
     static ref ROUTE_TABLE: Router = Router::new();
@@ -73,43 +75,45 @@ impl Router {
                     }
                 }
             }
-            Message::AddNodeRead(node) => {
+            Message::AddNodeRead(mut node) => {
                 if m.0.is_none() {
                     info!("can not add node for source none");
                     return (None, Message::DoNoting);
                 }
-                let source = m.0.unwrap();
+
+                if node.name == Config::get().name {
+                    info!("receive myself");
+                    return (None, Message::DoNoting);
+                }
+
+                let source = {
+                    if node.real_ip.is_empty() {
+                        m.0.unwrap()
+                    } else {
+                        let ip = read_ip(&node.real_ip);
+                        SocketAddr::new(ip, node.port as u16)
+                    }
+                };
 
                 // 1. insert subnet
-                if !node.sub_net_v4.is_empty() {
-                    let v4 = node.sub_net_v4;
-                    let v4 = Ipv4Addr::new(v4[0], v4[1], v4[2], v4[3]);
+                if !node.sub_net.is_empty() {
+                    let v = read_ip(&node.sub_net);
                     self.insert_to_table(
-                        v4.into(),
-                        node.net_mask_v4 as u16,
-                        node.name.clone(),
-                        Host::Socket(source),
-                    );
-                }
-                if !node.sub_net_v6.is_empty() {
-                    let v6 = node.sub_net_v6;
-                    let v6 = Ipv6Addr::from([
-                        v6[0], v6[1], v6[2], v6[3], v6[4], v6[5], v6[6], v6[7], v6[8], v6[9],
-                        v6[10], v6[11], v6[12], v6[13], v6[14], v6[15],
-                    ]);
-                    self.insert_to_table(
-                        v6.into(),
-                        node.net_mask_v6 as u16,
+                        v,
+                        node.net_mask as u16,
                         node.name.clone(),
                         Host::Socket(source),
                     );
                 }
 
                 // 2. find out what we known but m.0 did not known
-                if false {
-                    (m.0, Message::AddNodeWrite(unreachable!()))
+                if node.get_jump() == 0 {
+                    use crate::network::SELF;
+                    (Some(m.0.unwrap()), Message::AddNodeWrite(SELF.clone()))
                 } else {
-                    (None, Message::DoNoting)
+                    let jump = node.get_jump() + 1;
+                    node.set_jump(jump);
+                    (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
                 }
             }
             Message::DelNodeRead(nodes) => {
@@ -175,7 +179,7 @@ impl Router {
                     .insert(v6_addr.into(), mask, peer)
             }
         }
-        .unwrap()
+            .unwrap()
     }
 
     pub fn find_in_table(&self, package: &Package) -> Option<Peer> {
@@ -200,5 +204,17 @@ impl Router {
             return Some(peer);
         }
         None
+    }
+}
+
+fn read_ip(v: &[u8]) -> IpAddr {
+    match v.len() {
+        4 => Ipv4Addr::from([v[0], v[1], v[2], v[3]]).into(),
+        16 => Ipv6Addr::from([
+            v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
+            v[14], v[15],
+        ])
+            .into(),
+        _ => unreachable!(),
     }
 }

@@ -222,10 +222,8 @@ impl ::protobuf::reflect::ProtobufValue for PackageShard {
 #[derive(PartialEq,Clone,Default)]
 pub struct Node {
     // message fields
-    pub sub_net_v4: ::std::vec::Vec<u8>,
-    pub net_mask_v4: u32,
-    pub sub_net_v6: ::std::vec::Vec<u8>,
-    pub net_mask_v6: u32,
+    pub sub_net: ::std::vec::Vec<u8>,
+    pub net_mask: u32,
     pub name: ::std::string::String,
     pub jump: i32,
     pub real_ip: ::std::vec::Vec<u8>,
@@ -240,86 +238,45 @@ impl Node {
         ::std::default::Default::default()
     }
 
-    // bytes sub_net_v4 = 1;
+    // bytes sub_net = 1;
 
-    pub fn clear_sub_net_v4(&mut self) {
-        self.sub_net_v4.clear();
+    pub fn clear_sub_net(&mut self) {
+        self.sub_net.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_sub_net_v4(&mut self, v: ::std::vec::Vec<u8>) {
-        self.sub_net_v4 = v;
+    pub fn set_sub_net(&mut self, v: ::std::vec::Vec<u8>) {
+        self.sub_net = v;
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_sub_net_v4(&mut self) -> &mut ::std::vec::Vec<u8> {
-        &mut self.sub_net_v4
+    pub fn mut_sub_net(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.sub_net
     }
 
     // Take field
-    pub fn take_sub_net_v4(&mut self) -> ::std::vec::Vec<u8> {
-        ::std::mem::replace(&mut self.sub_net_v4, ::std::vec::Vec::new())
+    pub fn take_sub_net(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.sub_net, ::std::vec::Vec::new())
     }
 
-    pub fn get_sub_net_v4(&self) -> &[u8] {
-        &self.sub_net_v4
+    pub fn get_sub_net(&self) -> &[u8] {
+        &self.sub_net
     }
 
-    // uint32 net_mask_v4 = 2;
+    // uint32 net_mask = 2;
 
-    pub fn clear_net_mask_v4(&mut self) {
-        self.net_mask_v4 = 0;
-    }
-
-    // Param is passed by value, moved
-    pub fn set_net_mask_v4(&mut self, v: u32) {
-        self.net_mask_v4 = v;
-    }
-
-    pub fn get_net_mask_v4(&self) -> u32 {
-        self.net_mask_v4
-    }
-
-    // bytes sub_net_v6 = 3;
-
-    pub fn clear_sub_net_v6(&mut self) {
-        self.sub_net_v6.clear();
+    pub fn clear_net_mask(&mut self) {
+        self.net_mask = 0;
     }
 
     // Param is passed by value, moved
-    pub fn set_sub_net_v6(&mut self, v: ::std::vec::Vec<u8>) {
-        self.sub_net_v6 = v;
+    pub fn set_net_mask(&mut self, v: u32) {
+        self.net_mask = v;
     }
 
-    // Mutable pointer to the field.
-    // If field is not initialized, it is initialized with default value first.
-    pub fn mut_sub_net_v6(&mut self) -> &mut ::std::vec::Vec<u8> {
-        &mut self.sub_net_v6
-    }
-
-    // Take field
-    pub fn take_sub_net_v6(&mut self) -> ::std::vec::Vec<u8> {
-        ::std::mem::replace(&mut self.sub_net_v6, ::std::vec::Vec::new())
-    }
-
-    pub fn get_sub_net_v6(&self) -> &[u8] {
-        &self.sub_net_v6
-    }
-
-    // uint32 net_mask_v6 = 4;
-
-    pub fn clear_net_mask_v6(&mut self) {
-        self.net_mask_v6 = 0;
-    }
-
-    // Param is passed by value, moved
-    pub fn set_net_mask_v6(&mut self, v: u32) {
-        self.net_mask_v6 = v;
-    }
-
-    pub fn get_net_mask_v6(&self) -> u32 {
-        self.net_mask_v6
+    pub fn get_net_mask(&self) -> u32 {
+        self.net_mask
     }
 
     // string name = 5;
@@ -415,24 +372,14 @@ impl ::protobuf::Message for Node {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.sub_net_v4)?;
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.sub_net)?;
                 },
                 2 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
                     let tmp = is.read_uint32()?;
-                    self.net_mask_v4 = tmp;
-                },
-                3 => {
-                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.sub_net_v6)?;
-                },
-                4 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
-                    }
-                    let tmp = is.read_uint32()?;
-                    self.net_mask_v6 = tmp;
+                    self.net_mask = tmp;
                 },
                 5 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.name)?;
@@ -466,17 +413,11 @@ impl ::protobuf::Message for Node {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if !self.sub_net_v4.is_empty() {
-            my_size += ::protobuf::rt::bytes_size(1, &self.sub_net_v4);
+        if !self.sub_net.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(1, &self.sub_net);
         }
-        if self.net_mask_v4 != 0 {
-            my_size += ::protobuf::rt::value_size(2, self.net_mask_v4, ::protobuf::wire_format::WireTypeVarint);
-        }
-        if !self.sub_net_v6.is_empty() {
-            my_size += ::protobuf::rt::bytes_size(3, &self.sub_net_v6);
-        }
-        if self.net_mask_v6 != 0 {
-            my_size += ::protobuf::rt::value_size(4, self.net_mask_v6, ::protobuf::wire_format::WireTypeVarint);
+        if self.net_mask != 0 {
+            my_size += ::protobuf::rt::value_size(2, self.net_mask, ::protobuf::wire_format::WireTypeVarint);
         }
         if !self.name.is_empty() {
             my_size += ::protobuf::rt::string_size(5, &self.name);
@@ -496,17 +437,11 @@ impl ::protobuf::Message for Node {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        if !self.sub_net_v4.is_empty() {
-            os.write_bytes(1, &self.sub_net_v4)?;
+        if !self.sub_net.is_empty() {
+            os.write_bytes(1, &self.sub_net)?;
         }
-        if self.net_mask_v4 != 0 {
-            os.write_uint32(2, self.net_mask_v4)?;
-        }
-        if !self.sub_net_v6.is_empty() {
-            os.write_bytes(3, &self.sub_net_v6)?;
-        }
-        if self.net_mask_v6 != 0 {
-            os.write_uint32(4, self.net_mask_v6)?;
+        if self.net_mask != 0 {
+            os.write_uint32(2, self.net_mask)?;
         }
         if !self.name.is_empty() {
             os.write_string(5, &self.name)?;
@@ -563,24 +498,14 @@ impl ::protobuf::Message for Node {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
-                    "sub_net_v4",
-                    |m: &Node| { &m.sub_net_v4 },
-                    |m: &mut Node| { &mut m.sub_net_v4 },
+                    "sub_net",
+                    |m: &Node| { &m.sub_net },
+                    |m: &mut Node| { &mut m.sub_net },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
-                    "net_mask_v4",
-                    |m: &Node| { &m.net_mask_v4 },
-                    |m: &mut Node| { &mut m.net_mask_v4 },
-                ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
-                    "sub_net_v6",
-                    |m: &Node| { &m.sub_net_v6 },
-                    |m: &mut Node| { &mut m.sub_net_v6 },
-                ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
-                    "net_mask_v6",
-                    |m: &Node| { &m.net_mask_v6 },
-                    |m: &mut Node| { &mut m.net_mask_v6 },
+                    "net_mask",
+                    |m: &Node| { &m.net_mask },
+                    |m: &mut Node| { &mut m.net_mask },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                     "name",
@@ -624,10 +549,8 @@ impl ::protobuf::Message for Node {
 
 impl ::protobuf::Clear for Node {
     fn clear(&mut self) {
-        self.clear_sub_net_v4();
-        self.clear_net_mask_v4();
-        self.clear_sub_net_v6();
-        self.clear_net_mask_v6();
+        self.clear_sub_net();
+        self.clear_net_mask();
         self.clear_name();
         self.clear_jump();
         self.clear_real_ip();
@@ -1251,18 +1174,16 @@ impl ::protobuf::reflect::ProtobufValue for Payload {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0ftransport.proto\x12\0\"2\n\x0cPackageShard\x12\r\n\x03ttl\x18\x01\
-    \x20\x01(\rB\0\x12\x11\n\x07package\x18\x02\x20\x01(\x0cB\0:\0\"\xa5\x01\
-    \n\x04Node\x12\x14\n\nsub_net_v4\x18\x01\x20\x01(\x0cB\0\x12\x15\n\x0bne\
-    t_mask_v4\x18\x02\x20\x01(\rB\0\x12\x14\n\nsub_net_v6\x18\x03\x20\x01(\
-    \x0cB\0\x12\x15\n\x0bnet_mask_v6\x18\x04\x20\x01(\rB\0\x12\x0e\n\x04name\
-    \x18\x05\x20\x01(\tB\0\x12\x0e\n\x04jump\x18\x06\x20\x01(\x05B\0\x12\x11\
-    \n\x07real_ip\x18\x07\x20\x01(\x0cB\0\x12\x0e\n\x04port\x18\x08\x20\x01(\
-    \x05B\0:\0\"\x1c\n\x08PingPong\x12\x0e\n\x04name\x18\x01\x20\x01(\tB\0:\
-    \0\"\x91\x01\n\x07Payload\x12\"\n\x07package\x18\x01\x20\x01(\x0b2\r.Pac\
-    kageShardH\0B\0\x12\x1b\n\x08add_node\x18\x03\x20\x01(\x0b2\x05.NodeH\0B\
-    \0\x12\x1b\n\x08del_node\x18\x04\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\
-    \x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0B\t\n\x07payload:\0B\0b\
-    \x06proto3\
+    \x20\x01(\rB\0\x12\x11\n\x07package\x18\x02\x20\x01(\x0cB\0:\0\"r\n\x04N\
+    ode\x12\x11\n\x07sub_net\x18\x01\x20\x01(\x0cB\0\x12\x12\n\x08net_mask\
+    \x18\x02\x20\x01(\rB\0\x12\x0e\n\x04name\x18\x05\x20\x01(\tB\0\x12\x0e\n\
+    \x04jump\x18\x06\x20\x01(\x05B\0\x12\x11\n\x07real_ip\x18\x07\x20\x01(\
+    \x0cB\0\x12\x0e\n\x04port\x18\x08\x20\x01(\x05B\0:\0\"\x1c\n\x08PingPong\
+    \x12\x0e\n\x04name\x18\x01\x20\x01(\tB\0:\0\"\x91\x01\n\x07Payload\x12\"\
+    \n\x07package\x18\x01\x20\x01(\x0b2\r.PackageShardH\0B\0\x12\x1b\n\x08ad\
+    d_node\x18\x03\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\x08del_node\x18\
+    \x04\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b\
+    2\t.PingPongH\0B\0B\t\n\x07payload:\0B\0b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

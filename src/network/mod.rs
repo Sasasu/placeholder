@@ -14,6 +14,17 @@ use tokio::prelude::Stream;
 use tokio::prelude::{Async, Future};
 use tokio::sync::mpsc;
 
+lazy_static! {
+    pub static ref SELF: proto::Node = {
+        let c = Config::get();
+        let mut myself = proto::Node::new();
+        myself.set_sub_net(c.get_v4().octets().to_vec());
+        myself.set_net_mask(c.get_v4_mask());
+        myself.set_name(c.name.clone());
+        myself.set_jump(1);
+        myself
+    };
+}
 pub struct Network {
     socket: UdpSocket,
     rx: mpsc::UnboundedReceiver<Package>,
@@ -43,22 +54,12 @@ impl Network {
         // prepare hello message to other node
         let router_buffer = {
             let mut router_buffer = LinkedList::new();
-            // myself
-            let node = {
-                let mut myself = proto::Node::new();
-                myself.set_sub_net_v4(c.get_v4().octets().to_vec());
-                myself.set_net_mask_v4(c.get_v4_mask());
-                myself.set_name(c.name.clone());
-                myself.set_jump(1);
-                myself
-            };
-
             // clone for all servers
             for host in &c.servers {
                 info!("connecting {:?}", host);
                 let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
                 socket.connect(&addr).unwrap();
-                router_buffer.push_back((Some(addr), Message::AddNodeWrite(node.clone())));
+                router_buffer.push_back((Some(addr), Message::AddNodeWrite(SELF.clone())));
             }
             router_buffer
         };
