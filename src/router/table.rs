@@ -45,6 +45,7 @@ impl Table {
         }
         v
     }
+
     pub fn get_by_peer_name(&self, name: &str) -> Option<Peer> {
         for (_, node) in self.table.iter() {
             if node.name == name {
@@ -53,6 +54,7 @@ impl Table {
         }
         None
     }
+
     pub fn get_all_peer(&self) -> Vec<Peer> {
         let mut v = vec![];
         for (_, node) in self.table.iter() {
@@ -134,7 +136,9 @@ mod test {
             host: vec![Host::Localhost],
             name: "test".to_string(),
         };
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1);
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1)
+            .unwrap();
     }
 
     #[test]
@@ -148,8 +152,12 @@ mod test {
             host: vec![Host::Localhost],
             name: "test2".to_string(),
         };
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1.clone());
-        table.insert("128.66.2.0".parse().unwrap(), 24, peer2.clone());
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1.clone())
+            .unwrap();
+        table
+            .insert("128.66.2.0".parse().unwrap(), 24, peer2.clone())
+            .unwrap();
 
         let ans1 = table.find("128.66.1.0".parse().unwrap()).unwrap().clone();
         assert_eq!(ans1, peer1);
@@ -168,8 +176,12 @@ mod test {
             host: vec![Host::Localhost],
             name: "test2".to_string(),
         };
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1.clone());
-        table.insert("128.66.2.0".parse().unwrap(), 24, peer2.clone());
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1.clone())
+            .unwrap();
+        table
+            .insert("128.66.2.0".parse().unwrap(), 24, peer2.clone())
+            .unwrap();
 
         let ans1 = table.find("128.66.1.1".parse().unwrap()).unwrap().clone();
         assert_eq!(ans1, peer1);
@@ -194,7 +206,9 @@ mod test {
             name: "test1".to_string(),
         };
 
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1.clone());
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1.clone())
+            .unwrap();
 
         let ans1 = table.find("128.66.1.1".parse().unwrap()).unwrap().clone();
         assert_eq!(ans1, peer1);
@@ -202,7 +216,7 @@ mod test {
         let ans2 = table.find("128.66.2.1".parse().unwrap());
         assert_eq!(ans2, None);
 
-        table.delete("128.66.1.0".parse().unwrap(), 24);
+        table.delete("128.66.1.0".parse().unwrap(), 24).unwrap();
         assert_eq!(table.find("128.66.1.1".parse().unwrap()), None);
         assert_eq!(table.find("128.66.1.0".parse().unwrap()), None);
     }
@@ -218,8 +232,12 @@ mod test {
             host: vec![Host::Localhost],
             name: "test2".to_string(),
         };
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1.clone());
-        table.insert("128.66.2.0".parse().unwrap(), 24, peer2.clone());
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1.clone())
+            .unwrap();
+        table
+            .insert("128.66.2.0".parse().unwrap(), 24, peer2.clone())
+            .unwrap();
 
         assert_eq!(table.get_by_peer_name("test1").unwrap(), peer1.clone());
         assert_eq!(table.get_by_peer_name("test2").unwrap(), peer2.clone());
@@ -237,8 +255,12 @@ mod test {
             host: vec![Host::Localhost],
             name: "test2".to_string(),
         };
-        table.insert("128.66.1.0".parse().unwrap(), 24, peer1.clone());
-        table.insert("128.66.2.0".parse().unwrap(), 24, peer2.clone());
+        table
+            .insert("128.66.1.0".parse().unwrap(), 24, peer1.clone())
+            .unwrap();
+        table
+            .insert("128.66.2.0".parse().unwrap(), 24, peer2.clone())
+            .unwrap();
         assert_eq!(2, table.get_all_peer().len());
     }
 }

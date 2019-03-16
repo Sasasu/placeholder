@@ -120,10 +120,9 @@ impl Router {
                 self.router_message((None, Message::PackageShareRead(package, 127)))
             }
             Message::DoNoting => (None, Message::DoNoting),
-            Message::PingPongRead(_name) => (
-                m.0,
-                Message::PingPongWrite(Config::get().name.clone()),
-            ),
+            Message::PingPongRead(_name) => {
+                (m.0, Message::PingPongWrite(Config::get().name.clone()))
+            }
             Message::InterfaceWrite(_)
             | Message::PingPongWrite(_)
             | Message::AddNodeWrite(_)
