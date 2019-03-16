@@ -44,21 +44,21 @@ impl Network {
         let router_buffer = {
             let mut router_buffer = LinkedList::new();
             // myself
-            let nodes = vec![{
-                let mut myself = proto::AddNode::new();
+            let node = {
+                let mut myself = proto::Node::new();
                 myself.set_sub_net_v4(c.get_v4().octets().to_vec());
                 myself.set_net_mask_v4(c.get_v4_mask());
                 myself.set_name(c.name.clone());
                 myself.set_jump(1);
                 myself
-            }];
+            };
 
             // clone for all servers
             for host in &c.servers {
                 info!("connecting {:?}", host);
                 let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
                 socket.connect(&addr).unwrap();
-                router_buffer.push_back((Some(addr), Message::AddNodeWrite(nodes.clone())));
+                router_buffer.push_back((Some(addr), Message::AddNodeWrite(node.clone())));
             }
             router_buffer
         };
@@ -113,9 +113,9 @@ impl Future for Network {
                         .write_to_bytes()
                         .unwrap(),
                 ),
-                Message::AddNodeWrite(nodes) => self.add_to_send_list(
+                Message::AddNodeWrite(node) => self.add_to_send_list(
                     addr.unwrap(),
-                    Message::AddNodeWrite(nodes)
+                    Message::AddNodeWrite(node)
                         .into_protobuf()
                         .write_to_bytes()
                         .unwrap(),

@@ -1,5 +1,6 @@
 use super::package::Package;
 use crate::generated::transport as proto;
+use crate::generated::transport::Node;
 use log::*;
 use std::net::SocketAddr;
 
@@ -12,11 +13,11 @@ pub enum Message {
     PackageShareRead(Package, u32),
     PackageShareWrite(Package, u32),
 
-    AddNodeRead(Vec<proto::AddNode>),
-    AddNodeWrite(Vec<proto::AddNode>),
+    AddNodeRead(Node),
+    AddNodeWrite(Node),
 
-    DelNodeRead(Vec<String>),
-    DelNodeWrite(Vec<String>),
+    DelNodeRead(Node),
+    DelNodeWrite(Node),
 
     PingPongRead(String),
     PingPongWrite(String),
@@ -37,15 +38,11 @@ impl Message {
                 package_shard.set_ttl(ttl);
                 payload.set_package(package_shard);
             }
-            Message::AddNodeWrite(nodes) => {
-                let mut wrapper = proto::AddNodeRequest::new();
-                wrapper.set_nodes(nodes.into());
-                payload.set_add_node(wrapper);
+            Message::AddNodeWrite(node) => {
+                payload.set_add_node(node);
             }
-            Message::DelNodeWrite(nodes) => {
-                let mut wrapper = proto::DelNodeRequest::new();
-                wrapper.set_nodes(nodes.into());
-                payload.set_del_node(wrapper);
+            Message::DelNodeWrite(node) => {
+                payload.set_del_node(node);
             }
             Message::PingPongWrite(name) => {
                 let mut wrapper = proto::PingPong::new();
@@ -88,12 +85,8 @@ impl Message {
                 let p = Package::from_buffer(package.package);
                 (source, Message::PackageShareRead(p, package.ttl))
             }
-            Some(PayloadOneof::add_node(nodes)) => {
-                (source, Message::AddNodeRead(nodes.nodes.into()))
-            }
-            Some(PayloadOneof::del_node(nodes)) => {
-                (source, Message::DelNodeRead(nodes.nodes.into()))
-            }
+            Some(PayloadOneof::add_node(node)) => (source, Message::AddNodeRead(node)),
+            Some(PayloadOneof::del_node(node)) => (source, Message::DelNodeRead(node)),
         }
     }
 }

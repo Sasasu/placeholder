@@ -220,7 +220,7 @@ impl ::protobuf::reflect::ProtobufValue for PackageShard {
 }
 
 #[derive(PartialEq,Clone,Default)]
-pub struct AddNode {
+pub struct Node {
     // message fields
     pub sub_net_v4: ::std::vec::Vec<u8>,
     pub net_mask_v4: u32,
@@ -228,13 +228,15 @@ pub struct AddNode {
     pub net_mask_v6: u32,
     pub name: ::std::string::String,
     pub jump: i32,
+    pub real_ip: ::std::vec::Vec<u8>,
+    pub port: i32,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
 }
 
-impl AddNode {
-    pub fn new() -> AddNode {
+impl Node {
+    pub fn new() -> Node {
         ::std::default::Default::default()
     }
 
@@ -360,9 +362,50 @@ impl AddNode {
     pub fn get_jump(&self) -> i32 {
         self.jump
     }
+
+    // bytes real_ip = 7;
+
+    pub fn clear_real_ip(&mut self) {
+        self.real_ip.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_real_ip(&mut self, v: ::std::vec::Vec<u8>) {
+        self.real_ip = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_real_ip(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.real_ip
+    }
+
+    // Take field
+    pub fn take_real_ip(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.real_ip, ::std::vec::Vec::new())
+    }
+
+    pub fn get_real_ip(&self) -> &[u8] {
+        &self.real_ip
+    }
+
+    // int32 port = 8;
+
+    pub fn clear_port(&mut self) {
+        self.port = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_port(&mut self, v: i32) {
+        self.port = v;
+    }
+
+    pub fn get_port(&self) -> i32 {
+        self.port
+    }
 }
 
-impl ::protobuf::Message for AddNode {
+impl ::protobuf::Message for Node {
     fn is_initialized(&self) -> bool {
         true
     }
@@ -401,6 +444,16 @@ impl ::protobuf::Message for AddNode {
                     let tmp = is.read_int32()?;
                     self.jump = tmp;
                 },
+                7 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.real_ip)?;
+                },
+                8 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_int32()?;
+                    self.port = tmp;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -431,6 +484,12 @@ impl ::protobuf::Message for AddNode {
         if self.jump != 0 {
             my_size += ::protobuf::rt::value_size(6, self.jump, ::protobuf::wire_format::WireTypeVarint);
         }
+        if !self.real_ip.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(7, &self.real_ip);
+        }
+        if self.port != 0 {
+            my_size += ::protobuf::rt::value_size(8, self.port, ::protobuf::wire_format::WireTypeVarint);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -455,6 +514,12 @@ impl ::protobuf::Message for AddNode {
         if self.jump != 0 {
             os.write_int32(6, self.jump)?;
         }
+        if !self.real_ip.is_empty() {
+            os.write_bytes(7, &self.real_ip)?;
+        }
+        if self.port != 0 {
+            os.write_int32(8, self.port)?;
+        }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -485,8 +550,8 @@ impl ::protobuf::Message for AddNode {
         Self::descriptor_static()
     }
 
-    fn new() -> AddNode {
-        AddNode::new()
+    fn new() -> Node {
+        Node::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
@@ -499,36 +564,46 @@ impl ::protobuf::Message for AddNode {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
                     "sub_net_v4",
-                    |m: &AddNode| { &m.sub_net_v4 },
-                    |m: &mut AddNode| { &mut m.sub_net_v4 },
+                    |m: &Node| { &m.sub_net_v4 },
+                    |m: &mut Node| { &mut m.sub_net_v4 },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
                     "net_mask_v4",
-                    |m: &AddNode| { &m.net_mask_v4 },
-                    |m: &mut AddNode| { &mut m.net_mask_v4 },
+                    |m: &Node| { &m.net_mask_v4 },
+                    |m: &mut Node| { &mut m.net_mask_v4 },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
                     "sub_net_v6",
-                    |m: &AddNode| { &m.sub_net_v6 },
-                    |m: &mut AddNode| { &mut m.sub_net_v6 },
+                    |m: &Node| { &m.sub_net_v6 },
+                    |m: &mut Node| { &mut m.sub_net_v6 },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
                     "net_mask_v6",
-                    |m: &AddNode| { &m.net_mask_v6 },
-                    |m: &mut AddNode| { &mut m.net_mask_v6 },
+                    |m: &Node| { &m.net_mask_v6 },
+                    |m: &mut Node| { &mut m.net_mask_v6 },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                     "name",
-                    |m: &AddNode| { &m.name },
-                    |m: &mut AddNode| { &mut m.name },
+                    |m: &Node| { &m.name },
+                    |m: &mut Node| { &mut m.name },
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
                     "jump",
-                    |m: &AddNode| { &m.jump },
-                    |m: &mut AddNode| { &mut m.jump },
+                    |m: &Node| { &m.jump },
+                    |m: &mut Node| { &mut m.jump },
                 ));
-                ::protobuf::reflect::MessageDescriptor::new::<AddNode>(
-                    "AddNode",
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                    "real_ip",
+                    |m: &Node| { &m.real_ip },
+                    |m: &mut Node| { &mut m.real_ip },
+                ));
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
+                    "port",
+                    |m: &Node| { &m.port },
+                    |m: &mut Node| { &mut m.port },
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<Node>(
+                    "Node",
                     fields,
                     file_descriptor_proto()
                 )
@@ -536,18 +611,18 @@ impl ::protobuf::Message for AddNode {
         }
     }
 
-    fn default_instance() -> &'static AddNode {
-        static mut instance: ::protobuf::lazy::Lazy<AddNode> = ::protobuf::lazy::Lazy {
+    fn default_instance() -> &'static Node {
+        static mut instance: ::protobuf::lazy::Lazy<Node> = ::protobuf::lazy::Lazy {
             lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const AddNode,
+            ptr: 0 as *const Node,
         };
         unsafe {
-            instance.get(AddNode::new)
+            instance.get(Node::new)
         }
     }
 }
 
-impl ::protobuf::Clear for AddNode {
+impl ::protobuf::Clear for Node {
     fn clear(&mut self) {
         self.clear_sub_net_v4();
         self.clear_net_mask_v4();
@@ -555,349 +630,19 @@ impl ::protobuf::Clear for AddNode {
         self.clear_net_mask_v6();
         self.clear_name();
         self.clear_jump();
+        self.clear_real_ip();
+        self.clear_port();
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::fmt::Debug for AddNode {
+impl ::std::fmt::Debug for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for AddNode {
-    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
-        ::protobuf::reflect::ProtobufValueRef::Message(self)
-    }
-}
-
-#[derive(PartialEq,Clone,Default)]
-pub struct AddNodeRequest {
-    // message fields
-    pub nodes: ::protobuf::RepeatedField<AddNode>,
-    // special fields
-    pub unknown_fields: ::protobuf::UnknownFields,
-    pub cached_size: ::protobuf::CachedSize,
-}
-
-impl AddNodeRequest {
-    pub fn new() -> AddNodeRequest {
-        ::std::default::Default::default()
-    }
-
-    // repeated .AddNode nodes = 1;
-
-    pub fn clear_nodes(&mut self) {
-        self.nodes.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_nodes(&mut self, v: ::protobuf::RepeatedField<AddNode>) {
-        self.nodes = v;
-    }
-
-    // Mutable pointer to the field.
-    pub fn mut_nodes(&mut self) -> &mut ::protobuf::RepeatedField<AddNode> {
-        &mut self.nodes
-    }
-
-    // Take field
-    pub fn take_nodes(&mut self) -> ::protobuf::RepeatedField<AddNode> {
-        ::std::mem::replace(&mut self.nodes, ::protobuf::RepeatedField::new())
-    }
-
-    pub fn get_nodes(&self) -> &[AddNode] {
-        &self.nodes
-    }
-}
-
-impl ::protobuf::Message for AddNodeRequest {
-    fn is_initialized(&self) -> bool {
-        for v in &self.nodes {
-            if !v.is_initialized() {
-                return false;
-            }
-        };
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
-        while !is.eof()? {
-            let (field_number, wire_type) = is.read_tag_unpack()?;
-            match field_number {
-                1 => {
-                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.nodes)?;
-                },
-                _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u32 {
-        let mut my_size = 0;
-        for value in &self.nodes {
-            let len = value.compute_size();
-            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
-        };
-        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
-        self.cached_size.set(my_size);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        for v in &self.nodes {
-            os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
-            os.write_raw_varint32(v.get_cached_size())?;
-            v.write_to_with_cached_sizes(os)?;
-        };
-        os.write_unknown_fields(self.get_unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn get_cached_size(&self) -> u32 {
-        self.cached_size.get()
-    }
-
-    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
-        &self.unknown_fields
-    }
-
-    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
-        &mut self.unknown_fields
-    }
-
-    fn as_any(&self) -> &::std::any::Any {
-        self as &::std::any::Any
-    }
-    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
-        self as &mut ::std::any::Any
-    }
-    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
-        self
-    }
-
-    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
-        Self::descriptor_static()
-    }
-
-    fn new() -> AddNodeRequest {
-        AddNodeRequest::new()
-    }
-
-    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
-            lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
-        };
-        unsafe {
-            descriptor.get(|| {
-                let mut fields = ::std::vec::Vec::new();
-                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<AddNode>>(
-                    "nodes",
-                    |m: &AddNodeRequest| { &m.nodes },
-                    |m: &mut AddNodeRequest| { &mut m.nodes },
-                ));
-                ::protobuf::reflect::MessageDescriptor::new::<AddNodeRequest>(
-                    "AddNodeRequest",
-                    fields,
-                    file_descriptor_proto()
-                )
-            })
-        }
-    }
-
-    fn default_instance() -> &'static AddNodeRequest {
-        static mut instance: ::protobuf::lazy::Lazy<AddNodeRequest> = ::protobuf::lazy::Lazy {
-            lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const AddNodeRequest,
-        };
-        unsafe {
-            instance.get(AddNodeRequest::new)
-        }
-    }
-}
-
-impl ::protobuf::Clear for AddNodeRequest {
-    fn clear(&mut self) {
-        self.clear_nodes();
-        self.unknown_fields.clear();
-    }
-}
-
-impl ::std::fmt::Debug for AddNodeRequest {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for AddNodeRequest {
-    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
-        ::protobuf::reflect::ProtobufValueRef::Message(self)
-    }
-}
-
-#[derive(PartialEq,Clone,Default)]
-pub struct DelNodeRequest {
-    // message fields
-    pub nodes: ::protobuf::RepeatedField<::std::string::String>,
-    // special fields
-    pub unknown_fields: ::protobuf::UnknownFields,
-    pub cached_size: ::protobuf::CachedSize,
-}
-
-impl DelNodeRequest {
-    pub fn new() -> DelNodeRequest {
-        ::std::default::Default::default()
-    }
-
-    // repeated string nodes = 1;
-
-    pub fn clear_nodes(&mut self) {
-        self.nodes.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_nodes(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
-        self.nodes = v;
-    }
-
-    // Mutable pointer to the field.
-    pub fn mut_nodes(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
-        &mut self.nodes
-    }
-
-    // Take field
-    pub fn take_nodes(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
-        ::std::mem::replace(&mut self.nodes, ::protobuf::RepeatedField::new())
-    }
-
-    pub fn get_nodes(&self) -> &[::std::string::String] {
-        &self.nodes
-    }
-}
-
-impl ::protobuf::Message for DelNodeRequest {
-    fn is_initialized(&self) -> bool {
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
-        while !is.eof()? {
-            let (field_number, wire_type) = is.read_tag_unpack()?;
-            match field_number {
-                1 => {
-                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.nodes)?;
-                },
-                _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u32 {
-        let mut my_size = 0;
-        for value in &self.nodes {
-            my_size += ::protobuf::rt::string_size(1, &value);
-        };
-        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
-        self.cached_size.set(my_size);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        for v in &self.nodes {
-            os.write_string(1, &v)?;
-        };
-        os.write_unknown_fields(self.get_unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn get_cached_size(&self) -> u32 {
-        self.cached_size.get()
-    }
-
-    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
-        &self.unknown_fields
-    }
-
-    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
-        &mut self.unknown_fields
-    }
-
-    fn as_any(&self) -> &::std::any::Any {
-        self as &::std::any::Any
-    }
-    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
-        self as &mut ::std::any::Any
-    }
-    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
-        self
-    }
-
-    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
-        Self::descriptor_static()
-    }
-
-    fn new() -> DelNodeRequest {
-        DelNodeRequest::new()
-    }
-
-    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
-            lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
-        };
-        unsafe {
-            descriptor.get(|| {
-                let mut fields = ::std::vec::Vec::new();
-                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
-                    "nodes",
-                    |m: &DelNodeRequest| { &m.nodes },
-                    |m: &mut DelNodeRequest| { &mut m.nodes },
-                ));
-                ::protobuf::reflect::MessageDescriptor::new::<DelNodeRequest>(
-                    "DelNodeRequest",
-                    fields,
-                    file_descriptor_proto()
-                )
-            })
-        }
-    }
-
-    fn default_instance() -> &'static DelNodeRequest {
-        static mut instance: ::protobuf::lazy::Lazy<DelNodeRequest> = ::protobuf::lazy::Lazy {
-            lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const DelNodeRequest,
-        };
-        unsafe {
-            instance.get(DelNodeRequest::new)
-        }
-    }
-}
-
-impl ::protobuf::Clear for DelNodeRequest {
-    fn clear(&mut self) {
-        self.clear_nodes();
-        self.unknown_fields.clear();
-    }
-}
-
-impl ::std::fmt::Debug for DelNodeRequest {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for DelNodeRequest {
+impl ::protobuf::reflect::ProtobufValue for Node {
     fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
         ::protobuf::reflect::ProtobufValueRef::Message(self)
     }
@@ -1078,8 +823,8 @@ pub struct Payload {
 #[derive(Clone,PartialEq)]
 pub enum Payload_oneof_payload {
     package(PackageShard),
-    add_node(AddNodeRequest),
-    del_node(DelNodeRequest),
+    add_node(Node),
+    del_node(Node),
     ping(PingPong),
 }
 
@@ -1137,7 +882,7 @@ impl Payload {
         }
     }
 
-    // .AddNodeRequest add_node = 3;
+    // .Node add_node = 3;
 
     pub fn clear_add_node(&mut self) {
         self.payload = ::std::option::Option::None;
@@ -1151,15 +896,15 @@ impl Payload {
     }
 
     // Param is passed by value, moved
-    pub fn set_add_node(&mut self, v: AddNodeRequest) {
+    pub fn set_add_node(&mut self, v: Node) {
         self.payload = ::std::option::Option::Some(Payload_oneof_payload::add_node(v))
     }
 
     // Mutable pointer to the field.
-    pub fn mut_add_node(&mut self) -> &mut AddNodeRequest {
+    pub fn mut_add_node(&mut self) -> &mut Node {
         if let ::std::option::Option::Some(Payload_oneof_payload::add_node(_)) = self.payload {
         } else {
-            self.payload = ::std::option::Option::Some(Payload_oneof_payload::add_node(AddNodeRequest::new()));
+            self.payload = ::std::option::Option::Some(Payload_oneof_payload::add_node(Node::new()));
         }
         match self.payload {
             ::std::option::Option::Some(Payload_oneof_payload::add_node(ref mut v)) => v,
@@ -1168,25 +913,25 @@ impl Payload {
     }
 
     // Take field
-    pub fn take_add_node(&mut self) -> AddNodeRequest {
+    pub fn take_add_node(&mut self) -> Node {
         if self.has_add_node() {
             match self.payload.take() {
                 ::std::option::Option::Some(Payload_oneof_payload::add_node(v)) => v,
                 _ => panic!(),
             }
         } else {
-            AddNodeRequest::new()
+            Node::new()
         }
     }
 
-    pub fn get_add_node(&self) -> &AddNodeRequest {
+    pub fn get_add_node(&self) -> &Node {
         match self.payload {
             ::std::option::Option::Some(Payload_oneof_payload::add_node(ref v)) => v,
-            _ => AddNodeRequest::default_instance(),
+            _ => Node::default_instance(),
         }
     }
 
-    // .DelNodeRequest del_node = 4;
+    // .Node del_node = 4;
 
     pub fn clear_del_node(&mut self) {
         self.payload = ::std::option::Option::None;
@@ -1200,15 +945,15 @@ impl Payload {
     }
 
     // Param is passed by value, moved
-    pub fn set_del_node(&mut self, v: DelNodeRequest) {
+    pub fn set_del_node(&mut self, v: Node) {
         self.payload = ::std::option::Option::Some(Payload_oneof_payload::del_node(v))
     }
 
     // Mutable pointer to the field.
-    pub fn mut_del_node(&mut self) -> &mut DelNodeRequest {
+    pub fn mut_del_node(&mut self) -> &mut Node {
         if let ::std::option::Option::Some(Payload_oneof_payload::del_node(_)) = self.payload {
         } else {
-            self.payload = ::std::option::Option::Some(Payload_oneof_payload::del_node(DelNodeRequest::new()));
+            self.payload = ::std::option::Option::Some(Payload_oneof_payload::del_node(Node::new()));
         }
         match self.payload {
             ::std::option::Option::Some(Payload_oneof_payload::del_node(ref mut v)) => v,
@@ -1217,21 +962,21 @@ impl Payload {
     }
 
     // Take field
-    pub fn take_del_node(&mut self) -> DelNodeRequest {
+    pub fn take_del_node(&mut self) -> Node {
         if self.has_del_node() {
             match self.payload.take() {
                 ::std::option::Option::Some(Payload_oneof_payload::del_node(v)) => v,
                 _ => panic!(),
             }
         } else {
-            DelNodeRequest::new()
+            Node::new()
         }
     }
 
-    pub fn get_del_node(&self) -> &DelNodeRequest {
+    pub fn get_del_node(&self) -> &Node {
         match self.payload {
             ::std::option::Option::Some(Payload_oneof_payload::del_node(ref v)) => v,
-            _ => DelNodeRequest::default_instance(),
+            _ => Node::default_instance(),
         }
     }
 
@@ -1447,12 +1192,12 @@ impl ::protobuf::Message for Payload {
                     Payload::has_package,
                     Payload::get_package,
                 ));
-                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, AddNodeRequest>(
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, Node>(
                     "add_node",
                     Payload::has_add_node,
                     Payload::get_add_node,
                 ));
-                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, DelNodeRequest>(
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, Node>(
                     "del_node",
                     Payload::has_del_node,
                     Payload::get_del_node,
@@ -1506,19 +1251,18 @@ impl ::protobuf::reflect::ProtobufValue for Payload {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0ftransport.proto\x12\0\"2\n\x0cPackageShard\x12\r\n\x03ttl\x18\x01\
-    \x20\x01(\rB\0\x12\x11\n\x07package\x18\x02\x20\x01(\x0cB\0:\0\"\x85\x01\
-    \n\x07AddNode\x12\x14\n\nsub_net_v4\x18\x01\x20\x01(\x0cB\0\x12\x15\n\
-    \x0bnet_mask_v4\x18\x02\x20\x01(\rB\0\x12\x14\n\nsub_net_v6\x18\x03\x20\
-    \x01(\x0cB\0\x12\x15\n\x0bnet_mask_v6\x18\x04\x20\x01(\rB\0\x12\x0e\n\
-    \x04name\x18\x05\x20\x01(\tB\0\x12\x0e\n\x04jump\x18\x06\x20\x01(\x05B\0\
-    :\0\"-\n\x0eAddNodeRequest\x12\x19\n\x05nodes\x18\x01\x20\x03(\x0b2\x08.\
-    AddNodeB\0:\0\"#\n\x0eDelNodeRequest\x12\x0f\n\x05nodes\x18\x01\x20\x03(\
-    \tB\0:\0\"\x1c\n\x08PingPong\x12\x0e\n\x04name\x18\x01\x20\x01(\tB\0:\0\
-    \"\xa5\x01\n\x07Payload\x12\"\n\x07package\x18\x01\x20\x01(\x0b2\r.Packa\
-    geShardH\0B\0\x12%\n\x08add_node\x18\x03\x20\x01(\x0b2\x0f.AddNodeReques\
-    tH\0B\0\x12%\n\x08del_node\x18\x04\x20\x01(\x0b2\x0f.DelNodeRequestH\0B\
-    \0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0B\t\n\x07payl\
-    oad:\0B\0b\x06proto3\
+    \x20\x01(\rB\0\x12\x11\n\x07package\x18\x02\x20\x01(\x0cB\0:\0\"\xa5\x01\
+    \n\x04Node\x12\x14\n\nsub_net_v4\x18\x01\x20\x01(\x0cB\0\x12\x15\n\x0bne\
+    t_mask_v4\x18\x02\x20\x01(\rB\0\x12\x14\n\nsub_net_v6\x18\x03\x20\x01(\
+    \x0cB\0\x12\x15\n\x0bnet_mask_v6\x18\x04\x20\x01(\rB\0\x12\x0e\n\x04name\
+    \x18\x05\x20\x01(\tB\0\x12\x0e\n\x04jump\x18\x06\x20\x01(\x05B\0\x12\x11\
+    \n\x07real_ip\x18\x07\x20\x01(\x0cB\0\x12\x0e\n\x04port\x18\x08\x20\x01(\
+    \x05B\0:\0\"\x1c\n\x08PingPong\x12\x0e\n\x04name\x18\x01\x20\x01(\tB\0:\
+    \0\"\x91\x01\n\x07Payload\x12\"\n\x07package\x18\x01\x20\x01(\x0b2\r.Pac\
+    kageShardH\0B\0\x12\x1b\n\x08add_node\x18\x03\x20\x01(\x0b2\x05.NodeH\0B\
+    \0\x12\x1b\n\x08del_node\x18\x04\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\
+    \x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0B\t\n\x07payload:\0B\0b\
+    \x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

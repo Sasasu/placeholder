@@ -11,8 +11,8 @@ pub struct Table {
 
 pub trait LikeRouter {
     fn find(&self, addr: IpAddr) -> Option<&Peer>;
-    fn insert(&mut self, addr: IpAddr, mask: u16, peer: Peer);
-    fn delete(&mut self, addr: IpAddr, mask: u16);
+    fn insert(&mut self, addr: IpAddr, mask: u16, peer: Peer) -> Result<(), ()>;
+    fn delete(&mut self, addr: IpAddr, mask: u16) -> Result<(), ()>;
 }
 
 pub enum Error {
@@ -57,24 +57,26 @@ impl LikeRouter for Table {
         self.table.get_ancestor_value(&addr)
     }
 
-    fn insert(&mut self, addr: IpAddr, mask: u16, peer: Peer) {
+    fn insert(&mut self, addr: IpAddr, mask: u16, peer: Peer) -> Result<(), ()> {
         let mut addr = encode_bytes(addr);
         unsafe { addr.set_len(mask.into()) };
 
         match self.table.get_mut(&addr) {
             None => {
                 self.table.insert(addr, peer);
+                Ok(())
             }
-            Some(p) => {
-                p.merge(&peer);
-            }
-        };
+            Some(p) => p.merge(peer),
+        }
     }
 
-    fn delete(&mut self, addr: IpAddr, mask: u16) {
+    fn delete(&mut self, addr: IpAddr, mask: u16) -> Result<(), ()> {
         let mut addr = encode_bytes(addr);
         unsafe { addr.set_len(mask.into()) };
-        self.table.remove(&addr);
+        match self.table.remove(&addr) {
+            None => Err(()),
+            Some(_) => Ok(()),
+        }
     }
 }
 
