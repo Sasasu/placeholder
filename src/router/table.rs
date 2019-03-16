@@ -1,7 +1,8 @@
 use radix_trie::Trie;
 use radix_trie::TrieCommon;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
+use super::peer::Host;
 use super::peer::Peer;
 
 #[derive(Debug)]
@@ -34,6 +35,16 @@ impl Table {
 }
 
 impl Table {
+    pub fn get_all_nodes(&self) -> Vec<SocketAddr> {
+        let mut v = vec![];
+        for (_, node) in self.table.iter() {
+            match node.get_host() {
+                None | Some(Host::Localhost) | Some(Host::Unreachable) => {}
+                Some(Host::Socket(addr)) => v.push(addr.clone()),
+            }
+        }
+        v
+    }
     pub fn get_by_peer_name(&self, name: &str) -> Option<Peer> {
         for (_, node) in self.table.iter() {
             if node.name == name {

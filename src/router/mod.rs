@@ -37,39 +37,41 @@ impl Router {
         m: (Option<SocketAddr>, Message),
     ) -> (Option<SocketAddr>, Message) {
         match m.1 {
-            Message::PackageShareRead(package, ttl) => match self.find_in_table(&package) {
-                Some(peer) => match peer.get_host() {
-                    Some(Host::Socket(addr)) => {
+            Message::PackageShareRead(package, ttl) => {
+                match self.find_in_table(&package) {
+                    Some(peer) => match peer.get_host() {
+                        Some(Host::Socket(addr)) => {
+                            info!(
+                                "{} -> {} route to real address {}",
+                                package.source_address(),
+                                package.destination_address(),
+                                addr
+                            );
+                            (Some(*addr), Message::PackageShareWrite(package, ttl))
+                        }
+                        Some(Host::Localhost) => {
+                            info!(
+                                "{} -> {} route to Self",
+                                package.source_address(),
+                                package.destination_address()
+                            );
+                            (None, Message::InterfaceWrite(package))
+                        }
+                        None | Some(Host::Unreachable) => {
+                            info!("{} -> {} find node in router but can'find edge to reach, drop package", package.source_address(), package.destination_address());
+                            (None, Message::DoNoting)
+                        }
+                    },
+                    None => {
                         info!(
-                            "{} -> {} route to real address {}",
-                            package.source_address(),
-                            package.destination_address(),
-                            addr
-                        );
-                        (Some(*addr), Message::PackageShareWrite(package, ttl))
-                    }
-                    Some(Host::Localhost) => {
-                        info!(
-                            "{} -> {} route to Self",
+                            "{} -> {} not find in router table, drop package",
                             package.source_address(),
                             package.destination_address()
                         );
-                        (None, Message::InterfaceWrite(package))
-                    }
-                    None | Some(Host::Unreachable) => {
-                        info!("{} -> {} find node in router but can'find edge to reach, drop package", package.source_address(), package.destination_address());
                         (None, Message::DoNoting)
                     }
-                },
-                None => {
-                    info!(
-                        "{} -> {} not find in router table, drop package",
-                        package.source_address(),
-                        package.destination_address()
-                    );
-                    (None, Message::DoNoting)
                 }
-            },
+            }
             Message::AddNodeRead(node) => {
                 if m.0.is_none() {
                     info!("can not add node for source none");
@@ -134,6 +136,21 @@ impl Router {
 }
 
 impl Router {
+    pub fn get_all_node(&self) -> Vec<SocketAddr> {
+        let v = self.ipv4_table.read().unwrap().get_all_peer();
+        let o = &mut self.ipv6_table.read().unwrap().get_all_peer();
+
+        v.iter()
+            .chain(o.iter())
+            .map(|p| match p.get_host() {
+                Some(Host::Socket(addr)) => Some(addr),
+                None | Some(Host::Unreachable) | Some(Host::Localhost) => None,
+            })
+            .filter(|x| !x.is_none())
+            .map(|x| x.unwrap().clone())
+            .collect()
+    }
+
     pub fn insert_to_table(&self, dest: IpAddr, mask: u16, name: String, host: Host) {
         info!(
             "add {}/{} -> {}:\"{:?}\" to router table",

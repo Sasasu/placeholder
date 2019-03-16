@@ -113,13 +113,17 @@ impl Future for Network {
                         .write_to_bytes()
                         .unwrap(),
                 ),
-                Message::AddNodeWrite(node) => self.add_to_send_list(
-                    addr.unwrap(),
-                    Message::AddNodeWrite(node)
-                        .into_protobuf()
-                        .write_to_bytes()
-                        .unwrap(),
-                ),
+                Message::AddNodeWrite(node) => {
+                    for host in Router::get().get_all_node() {
+                        self.add_to_send_list(
+                            host,
+                            Message::AddNodeWrite(node.clone())
+                                .into_protobuf()
+                                .write_to_bytes()
+                                .unwrap(),
+                        )
+                    }
+                }
                 other => {
                     let ans = Router::get().router_message((addr, other));
                     self.router_buffer.push_back(ans);
