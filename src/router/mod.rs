@@ -6,6 +6,7 @@ pub mod test;
 pub use self::peer::{Host, Peer};
 pub use self::table::{LikeRouter, Table};
 use crate::config::Config;
+use crate::generated::transport::Node;
 use crate::internal::message::Message;
 use crate::internal::package::Package;
 use log::*;
@@ -75,6 +76,22 @@ impl Router {
                     }
                 }
             }
+            Message::InitNode(init) => {
+                let mut add_node = Node::new();
+                add_node.set_jump(1);
+                add_node.set_name(init.name);
+                add_node.set_sub_net(init.sub_net);
+                add_node.set_net_mask(init.net_mask);
+
+                let addr = m.0.unwrap();
+                add_node.set_port(addr.port() as i32);
+                match addr.ip() {
+                    IpAddr::V6(v6) => add_node.set_real_ip(v6.octets().to_vec()),
+                    IpAddr::V4(v4) => add_node.set_real_ip(v4.octets().to_vec()),
+                }
+                // use None to broadcast
+                (None, Message::AddNodeWrite(add_node))
+            }
             Message::AddNodeRead(mut node) => {
                 if m.0.is_none() {
                     info!("can not add node for source none");
@@ -87,7 +104,7 @@ impl Router {
                 }
 
                 let source = {
-                    if node.real_ip.is_empty() {
+                    if node.jump == 0 {
                         m.0.unwrap()
                     } else {
                         let ip = read_ip(&node.real_ip);
@@ -106,15 +123,10 @@ impl Router {
                     );
                 }
 
-                // 2. find out what we known but m.0 did not known
-                if node.get_jump() == 0 {
-                    use crate::network::SELF;
-                    (Some(m.0.unwrap()), Message::AddNodeWrite(SELF.clone()))
-                } else {
-                    let jump = node.get_jump() + 1;
-                    node.set_jump(jump);
-                    (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
-                }
+                // board cast every node
+                let jump = node.get_jump() + 1;
+                node.set_jump(jump);
+                (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
             }
             Message::DelNodeRead(nodes) => {
                 info!("del node {:?}", nodes);
@@ -179,7 +191,7 @@ impl Router {
                     .insert(v6_addr.into(), mask, peer)
             }
         }
-            .unwrap()
+        .unwrap()
     }
 
     pub fn find_in_table(&self, package: &Package) -> Option<Peer> {
@@ -214,7 +226,7 @@ fn read_ip(v: &[u8]) -> IpAddr {
             v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
             v[14], v[15],
         ])
-            .into(),
+        .into(),
         _ => unreachable!(),
     }
 }

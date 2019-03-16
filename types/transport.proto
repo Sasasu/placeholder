@@ -20,12 +20,23 @@ message Node {
   string name = 5;
   int32 jump = 6;
 
-  // if read_ip is set, means this is a forward node
+  // if jump > 0 , means this is a forward node
   // then use this real_host to replace the ip get from `receive_from`
+  // else real_ip and port is not set
   bytes real_ip = 7;
   int32 port = 8;
 }
 
+// init message, the first message sent by new node
+// when node receive this message, send all peer by `add_node` and broadcast
+// this node using `add_node`
+message Init {
+  bytes sub_net = 1;
+  uint32 net_mask = 2;
+
+  string name = 5;
+  int32 jump = 6;
+}
 
 message PingPong { string name = 1; }
 
@@ -37,6 +48,7 @@ message Payload {
     Node add_node = 3;
     // del some node (by name)
     Node del_node = 4;
+    Init init_node = 5;
     // tell this node, what node i known
     PingPong ping = 7;
   }
