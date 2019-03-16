@@ -13,7 +13,7 @@ pub struct Peer {
 }
 
 impl Peer {
-    pub fn merge(&mut self, other: &Peer) {}
+    pub fn merge(&mut self, _other: &Peer) {}
     pub fn get_host(&self) -> Option<&Host> {
         if self.host.is_empty() {
             None

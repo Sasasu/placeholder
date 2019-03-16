@@ -43,7 +43,7 @@ pub enum Type {
 
 #[derive(Debug)]
 pub struct Device {
-    interface: Arc<Mutex<interface::DeviceInterface>>,
+    interface: Arc<Mutex<device_interface::DeviceInterface>>,
     rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
     tx: Option<mpsc::UnboundedSender<Package>>,
     _write_buffer: LinkedList<Package>,
@@ -92,7 +92,7 @@ impl Device {
         Device {
             rx,
             tx: tx.into(),
-            interface: Mutex::new(interface::DeviceInterface::new(interface)).into(),
+            interface: Mutex::new(device_interface::DeviceInterface::new(interface)).into(),
             _write_buffer: LinkedList::new(),
         }
     }
@@ -207,7 +207,7 @@ impl From<IoError> for Error {
     }
 }
 
-pub mod interface {
+pub mod device_interface {
     use log::*;
     use std::fs::File;
     use std::io::ErrorKind;

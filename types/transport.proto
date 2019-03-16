@@ -27,21 +27,7 @@ message AddNodeRequest { repeated AddNode nodes = 1; }
 // delete those node from network
 message DelNodeRequest { repeated string nodes = 1; }
 
-// a node
-message NodeAddress {
-  string name = 1;
-  // where can other node connect
-  string host = 2;
-  // which port this node use
-  int32 port = 4;
-}
-
-// repeated wrapper for NodeAddress
-message ShareNode { repeated NodeAddress nodes = 1; }
-
 message PingPong { string name = 1; }
-
-message WhoHasNode { repeated string name = 1; }
 
 message Payload {
   oneof payload {
@@ -52,8 +38,6 @@ message Payload {
     // del some node (by name)
     DelNodeRequest del_node = 4;
     // tell this node, what node i known
-    ShareNode share_node = 5;
-    WhoHasNode who_has_node = 6;
     PingPong ping = 7;
   }
 }

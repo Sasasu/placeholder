@@ -15,14 +15,8 @@ pub enum Message {
     AddNodeRead(Vec<proto::AddNode>),
     AddNodeWrite(Vec<proto::AddNode>),
 
-    ShareNodeRead(Vec<proto::NodeAddress>),
-    ShareNodeWrite(Vec<proto::NodeAddress>),
-
     DelNodeRead(Vec<String>),
     DelNodeWrite(Vec<String>),
-
-    WhoHasNodeRead(Vec<String>),
-    WhoHasNodeWrite(Vec<String>),
 
     PingPongRead(String),
     PingPongWrite(String),
@@ -48,20 +42,10 @@ impl Message {
                 wrapper.set_nodes(nodes.into());
                 payload.set_add_node(wrapper);
             }
-            Message::ShareNodeWrite(nodes) => {
-                let mut wrapper = proto::ShareNode::new();
-                wrapper.set_nodes(nodes.into());
-                payload.set_share_node(wrapper);
-            }
             Message::DelNodeWrite(nodes) => {
                 let mut wrapper = proto::DelNodeRequest::new();
                 wrapper.set_nodes(nodes.into());
                 payload.set_del_node(wrapper);
-            }
-            Message::WhoHasNodeWrite(names) => {
-                let mut wrapper = proto::WhoHasNode::new();
-                wrapper.set_name(names.into());
-                payload.set_who_has_node(wrapper);
             }
             Message::PingPongWrite(name) => {
                 let mut wrapper = proto::PingPong::new();
@@ -74,9 +58,7 @@ impl Message {
             Message::PingPongRead(_)
             | Message::AddNodeRead(_)
             | Message::PackageShareRead(_, _)
-            | Message::DelNodeRead(_)
-            | Message::ShareNodeRead(_)
-            | Message::WhoHasNodeRead(_) => unreachable!(
+            | Message::DelNodeRead(_) => unreachable!(
                 "can not covert response message to protobuf message, {:?}",
                 self
             ),
@@ -111,12 +93,6 @@ impl Message {
             }
             Some(PayloadOneof::del_node(nodes)) => {
                 (source, Message::DelNodeRead(nodes.nodes.into()))
-            }
-            Some(PayloadOneof::share_node(nodes)) => {
-                (source, Message::ShareNodeRead(nodes.nodes.into()))
-            }
-            Some(PayloadOneof::who_has_node(names)) => {
-                (source, Message::WhoHasNodeRead(names.name.into()))
             }
         }
     }

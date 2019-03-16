@@ -4,7 +4,6 @@ use std::net::IpAddr;
 
 use super::peer::Peer;
 
-
 #[derive(Debug)]
 pub struct Table {
     table: Trie<Vec<u8>, Peer>,
@@ -114,7 +113,6 @@ fn split_u8(u: u8, v: &mut Vec<u8>) {
 mod test {
     use crate::router::peer::{Host, Peer};
     use crate::router::table::{LikeRouter, Table};
-    use std::net::Ipv4Addr;
 
     #[test]
     pub fn crate_table() {

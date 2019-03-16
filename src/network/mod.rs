@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::generated::transport as proto;
 use crate::internal::message::Message;
 use crate::internal::package::{Buffer, Package};
-use crate::router::{Peer, Router};
+use crate::router::{Host, Router};
 use log::*;
 use protobuf::Message as PbMessage;
 use std::collections::LinkedList;
@@ -33,8 +33,12 @@ impl Network {
             .expect("bind address failure");
 
         // add my self to router table
-        Router::get().add_peer(&c.name, Peer::LocaleHost);
-        Router::get().insert_to_table(c.get_v4().into(), c.get_v4_mask(), c.name.clone());
+        Router::get().insert_to_table(
+            c.get_v4().into(),
+            c.get_v4_mask() as u16,
+            c.name.clone(),
+            Host::Localhost,
+        );
 
         // prepare hello message to other node
         let router_buffer = {
@@ -54,7 +58,6 @@ impl Network {
                 info!("connecting {:?}", host);
                 let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
                 socket.connect(&addr).unwrap();
-                Router::get().add_peer(&host.name, Peer::Addr(addr));
                 router_buffer.push_back((Some(addr), Message::AddNodeWrite(nodes.clone())));
             }
             router_buffer
@@ -106,20 +109,6 @@ impl Future for Network {
                 Message::PackageShareWrite(package, ttl) => self.add_to_send_list(
                     addr.unwrap(),
                     Message::PackageShareWrite(package, ttl)
-                        .into_protobuf()
-                        .write_to_bytes()
-                        .unwrap(),
-                ),
-                Message::ShareNodeWrite(nodes) => self.add_to_send_list(
-                    addr.unwrap(),
-                    Message::ShareNodeWrite(nodes)
-                        .into_protobuf()
-                        .write_to_bytes()
-                        .unwrap(),
-                ),
-                Message::WhoHasNodeWrite(nodes) => self.add_to_send_list(
-                    addr.unwrap(),
-                    Message::WhoHasNodeWrite(nodes)
                         .into_protobuf()
                         .write_to_bytes()
                         .unwrap(),
