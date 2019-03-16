@@ -100,7 +100,7 @@ impl Default for Config {
             device_name: "ph0".to_string(),
             device_type: interface::Type::Tun,
             port: 7654,
-            subnet: "10.0.0.0/32".to_string(),
+            subnet: "128.66.1.0/32".to_string(),
             ifup: "/bin/sh -c 'exit 1'".to_string(),
             ifdown: "/bin/sh -c 'exit 1'".to_string(),
             servers: vec![],
