@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Host {
     Localhost,
+    Unreachable,
     Socket(SocketAddr),
 }
 

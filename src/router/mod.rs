@@ -56,8 +56,8 @@ impl Router {
                         );
                         (None, Message::InterfaceWrite(package))
                     }
-                    None => {
-                        info!("{} -> {} find node in router but can'find edge to connect, drop package", package.source_address(), package.destination_address());
+                    None | Some(Host::Unreachable) => {
+                        info!("{} -> {} find node in router but can'find edge to reach, drop package", package.source_address(), package.destination_address());
                         (None, Message::DoNoting)
                     }
                 },
