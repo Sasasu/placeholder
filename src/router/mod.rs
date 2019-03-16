@@ -147,7 +147,7 @@ impl Router {
                 None | Some(Host::Unreachable) | Some(Host::Localhost) => None,
             })
             .filter(|x| !x.is_none())
-            .map(|x| x.unwrap().clone())
+            .map(|x| *x.unwrap())
             .collect()
     }
 
