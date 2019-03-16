@@ -8,6 +8,7 @@ use crate::internal::package::Package;
 use log::*;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
+use crate::config::Config;
 
 lazy_static! {
     static ref ROUTE_TABLE: Router = Router::new();
@@ -121,7 +122,7 @@ impl Router {
             Message::DoNoting => (None, Message::DoNoting),
             Message::PingPongRead(_name) => (
                 m.0,
-                Message::PingPongWrite("name-from-ping-pong".to_string()),
+                Message::PingPongWrite(Config::get().name.clone()),
             ),
             Message::InterfaceWrite(_)
             | Message::PingPongWrite(_)
