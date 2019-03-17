@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::internal::message::Message;
 use crate::internal::package::{Buffer, Package};
 use crate::utils::*;
 use libc;
@@ -10,7 +9,6 @@ use std::convert::From;
 use std::ffi::CString;
 use std::fs::File as StdFile;
 use std::io::Error as IoError;
-use std::net::SocketAddr;
 use std::os::raw::c_char;
 use std::os::unix::io::FromRawFd;
 use std::sync::{Arc, Mutex};
@@ -44,7 +42,7 @@ pub enum Type {
 #[derive(Debug)]
 pub struct Device {
     interface: Arc<Mutex<device_interface::DeviceInterface>>,
-    rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
+    rx: mpsc::UnboundedReceiver<Package>,
     tx: Option<mpsc::UnboundedSender<Package>>,
     _write_buffer: LinkedList<Package>,
 }
@@ -55,10 +53,7 @@ lazy_static! {
 }
 
 impl Device {
-    pub fn new(
-        rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
-        tx: mpsc::UnboundedSender<Package>,
-    ) -> Self {
+    pub fn new(rx: mpsc::UnboundedReceiver<Package>, tx: mpsc::UnboundedSender<Package>) -> Self {
         let c = Config::get();
         info!(
             "crate new device: {:?}, type: {:?}",
@@ -106,7 +101,10 @@ impl Future for Device {
         // recv from net
         loop {
             match self.rx.poll()? {
-                Async::Ready(Some(message)) => self.handle_message(message),
+                Async::Ready(Some(p)) => {
+                    trace!("interface async send {} bytes", p.len());
+                    self._write_buffer.push_back(p);
+                }
                 Async::Ready(None) => panic!("DW: get None"),
                 Async::NotReady => break,
             }
@@ -173,19 +171,6 @@ impl Future for Device {
         }
 
         Ok(Async::NotReady)
-    }
-}
-
-impl Device {
-    pub fn handle_message(&mut self, message: (Option<SocketAddr>, Message)) {
-        match message.1 {
-            Message::InterfaceWrite(p) => {
-                trace!("interface async send {} bytes", p.len());
-                self._write_buffer.push_back(p);
-            }
-            Message::DoNoting => {}
-            _ => unreachable!("wrong message type received"),
-        };
     }
 }
 
