@@ -48,6 +48,7 @@ message Payload {
     Node add_node = 3;
     // del some node (by name)
     Node del_node = 4;
+    Init init_node = 5;
     // tell this node, what node i known
     PingPong ping = 7;
   }

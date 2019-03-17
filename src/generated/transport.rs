@@ -1023,6 +1023,7 @@ pub enum Payload_oneof_payload {
     package(PackageShard),
     add_node(Node),
     del_node(Node),
+    init_node(Init),
     ping(PingPong),
 }
 
@@ -1178,6 +1179,55 @@ impl Payload {
         }
     }
 
+    // .Init init_node = 5;
+
+    pub fn clear_init_node(&mut self) {
+        self.payload = ::std::option::Option::None;
+    }
+
+    pub fn has_init_node(&self) -> bool {
+        match self.payload {
+            ::std::option::Option::Some(Payload_oneof_payload::init_node(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_init_node(&mut self, v: Init) {
+        self.payload = ::std::option::Option::Some(Payload_oneof_payload::init_node(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_init_node(&mut self) -> &mut Init {
+        if let ::std::option::Option::Some(Payload_oneof_payload::init_node(_)) = self.payload {
+        } else {
+            self.payload = ::std::option::Option::Some(Payload_oneof_payload::init_node(Init::new()));
+        }
+        match self.payload {
+            ::std::option::Option::Some(Payload_oneof_payload::init_node(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_init_node(&mut self) -> Init {
+        if self.has_init_node() {
+            match self.payload.take() {
+                ::std::option::Option::Some(Payload_oneof_payload::init_node(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            Init::new()
+        }
+    }
+
+    pub fn get_init_node(&self) -> &Init {
+        match self.payload {
+            ::std::option::Option::Some(Payload_oneof_payload::init_node(ref v)) => v,
+            _ => Init::default_instance(),
+        }
+    }
+
     // .PingPong ping = 7;
 
     pub fn clear_ping(&mut self) {
@@ -1245,6 +1295,11 @@ impl ::protobuf::Message for Payload {
                 return false;
             }
         }
+        if let Some(Payload_oneof_payload::init_node(ref v)) = self.payload {
+            if !v.is_initialized() {
+                return false;
+            }
+        }
         if let Some(Payload_oneof_payload::ping(ref v)) = self.payload {
             if !v.is_initialized() {
                 return false;
@@ -1274,6 +1329,12 @@ impl ::protobuf::Message for Payload {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
                     self.payload = ::std::option::Option::Some(Payload_oneof_payload::del_node(is.read_message()?));
+                },
+                5 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.payload = ::std::option::Option::Some(Payload_oneof_payload::init_node(is.read_message()?));
                 },
                 7 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
@@ -1307,6 +1368,10 @@ impl ::protobuf::Message for Payload {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
+                &Payload_oneof_payload::init_node(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                },
                 &Payload_oneof_payload::ping(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
@@ -1333,6 +1398,11 @@ impl ::protobuf::Message for Payload {
                 },
                 &Payload_oneof_payload::del_node(ref v) => {
                     os.write_tag(4, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
+                },
+                &Payload_oneof_payload::init_node(ref v) => {
+                    os.write_tag(5, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
@@ -1400,6 +1470,11 @@ impl ::protobuf::Message for Payload {
                     Payload::has_del_node,
                     Payload::get_del_node,
                 ));
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, Init>(
+                    "init_node",
+                    Payload::has_init_node,
+                    Payload::get_init_node,
+                ));
                 fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, PingPong>(
                     "ping",
                     Payload::has_ping,
@@ -1430,6 +1505,7 @@ impl ::protobuf::Clear for Payload {
         self.clear_package();
         self.clear_add_node();
         self.clear_del_node();
+        self.clear_init_node();
         self.clear_ping();
         self.unknown_fields.clear();
     }
@@ -1457,11 +1533,12 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x11\n\x07sub_net\x18\x01\x20\x01(\x0cB\0\x12\x12\n\x08net_mask\x18\x02\
     \x20\x01(\rB\0\x12\x0e\n\x04name\x18\x05\x20\x01(\tB\0\x12\x0e\n\x04jump\
     \x18\x06\x20\x01(\x05B\0:\0\"\x1c\n\x08PingPong\x12\x0e\n\x04name\x18\
-    \x01\x20\x01(\tB\0:\0\"\x91\x01\n\x07Payload\x12\"\n\x07package\x18\x01\
+    \x01\x20\x01(\tB\0:\0\"\xaf\x01\n\x07Payload\x12\"\n\x07package\x18\x01\
     \x20\x01(\x0b2\r.PackageShardH\0B\0\x12\x1b\n\x08add_node\x18\x03\x20\
     \x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\x08del_node\x18\x04\x20\x01(\x0b2\
-    \x05.NodeH\0B\0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0\
-    B\t\n\x07payload:\0B\0b\x06proto3\
+    \x05.NodeH\0B\0\x12\x1c\n\tinit_node\x18\x05\x20\x01(\x0b2\x05.InitH\0B\
+    \0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0B\t\n\x07payl\
+    oad:\0B\0b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

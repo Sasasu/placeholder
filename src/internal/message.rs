@@ -1,6 +1,5 @@
 use super::package::Package;
-use crate::generated::transport as proto;
-use crate::generated::transport::Node;
+use crate::generated::transport::{Init, Node, PackageShard, Payload, PingPong};
 use log::*;
 use std::net::SocketAddr;
 
@@ -19,6 +18,8 @@ pub enum Message {
     DelNodeRead(Node),
     DelNodeWrite(Node),
 
+    InitNode(Init),
+
     PingPongRead(String),
     PingPongWrite(String),
 
@@ -30,10 +31,10 @@ impl Message {
     ///
     /// only support network and router
     pub fn into_protobuf(self) -> impl protobuf::Message {
-        let mut payload = proto::Payload::new();
+        let mut payload = Payload::new();
         match self {
             Message::PackageShareWrite(package, ttl) => {
-                let mut package_shard = proto::PackageShard::new();
+                let mut package_shard = PackageShard::new();
                 package_shard.set_package(package.raw_package);
                 package_shard.set_ttl(ttl);
                 payload.set_package(package_shard);
@@ -44,8 +45,11 @@ impl Message {
             Message::DelNodeWrite(node) => {
                 payload.set_del_node(node);
             }
+            Message::InitNode(init) => {
+                payload.set_init_node(init);
+            }
             Message::PingPongWrite(name) => {
-                let mut wrapper = proto::PingPong::new();
+                let mut wrapper = PingPong::new();
                 wrapper.set_name(name);
                 payload.set_ping(wrapper);
             }
@@ -70,7 +74,7 @@ impl Message {
     ) -> (Option<SocketAddr>, Self) {
         use crate::generated::transport::Payload_oneof_payload as PayloadOneof;
         use protobuf::Message as ProtoMessage;
-        let mut payload = proto::Payload::new();
+        let mut payload = Payload::new();
         if let Err(e) = payload.merge_from_bytes(&buffer) {
             warn!("error to decode protobuf, drop package {}", e);
             return (source, Message::DoNoting);
@@ -87,6 +91,7 @@ impl Message {
             }
             Some(PayloadOneof::add_node(node)) => (source, Message::AddNodeRead(node)),
             Some(PayloadOneof::del_node(node)) => (source, Message::DelNodeRead(node)),
+            Some(PayloadOneof::init_node(node)) => (source, Message::InitNode(node)),
         }
     }
 }
