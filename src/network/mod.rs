@@ -28,7 +28,7 @@ lazy_static! {
 pub struct Network {
     socket: UdpSocket,
     rx: mpsc::UnboundedReceiver<Package>,
-    tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
+    tx: mpsc::UnboundedSender<Package>,
     send_buffer: LinkedList<(SocketAddr, Vec<u8>)>,
     router_buffer: LinkedList<(Option<SocketAddr>, Message)>,
 }
@@ -36,7 +36,7 @@ pub struct Network {
 impl Network {
     pub fn new(
         rx: mpsc::UnboundedReceiver<Package>,
-        tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
+        tx: mpsc::UnboundedSender<Package>,
     ) -> Self {
         let c = Config::get();
         info!("binding socket: {}:{}", "0.0.0.0", c.port);
@@ -104,7 +104,7 @@ impl Future for Network {
                 Message::DoNoting => {}
                 Message::InterfaceWrite(package) => {
                     self.tx
-                        .try_send((None, Message::InterfaceWrite(package)))
+                        .try_send(package)
                         .unwrap();
                 }
                 Message::PackageShareWrite(package, ttl) => self.add_to_send_list(
