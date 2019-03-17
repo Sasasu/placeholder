@@ -27,22 +27,4 @@ lazy_static! {
             .get_matches()
     };
     pub static ref CONFIG: Config = crate::config::Config::from_path(ARG.value_of("file").unwrap());
-
-    static ref INIT_LOGGER: () = Builder::from_default_env().filter_level({
-        let verbose = ARG.occurrences_of("verbosity") as usize;
-
-        // verbose = 0 and -q is not set means there is no parameter pass in
-        // set verbose to max
-        if ARG.is_present("quiet") {
-            LevelFilter::Off
-        } else {
-            match verbose {
-                1 => LevelFilter::Error,
-                2 => LevelFilter::Warn,
-                3 => LevelFilter::Info,
-                4 => LevelFilter::Debug,
-                _ => LevelFilter::Trace,
-            }
-        }
-    }).target(Target::Stderr).init();
 }

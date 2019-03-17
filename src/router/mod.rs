@@ -42,6 +42,7 @@ impl Router {
     ) -> (Option<SocketAddr>, Message) {
         match m.1 {
             Message::PackageShareRead(package, ttl) => {
+                trace!("router get PackageShareRead read");
                 match self.find_in_table(&package) {
                     Some(peer) => match peer.get_host() {
                         Some(Host::Socket(addr)) => {
@@ -77,6 +78,7 @@ impl Router {
                 }
             }
             Message::InitNode(init) => {
+                trace!("router get InitNode");
                 let mut add_node = Node::new();
                 add_node.set_jump(1);
                 add_node.set_name(init.name);
@@ -93,6 +95,7 @@ impl Router {
                 (None, Message::AddNodeWrite(add_node))
             }
             Message::AddNodeRead(mut node) => {
+                trace!("router get AddNode read");
                 if m.0.is_none() {
                     info!("can not add node for source none");
                     return (None, Message::DoNoting);
@@ -129,10 +132,11 @@ impl Router {
                 (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
             }
             Message::DelNodeRead(nodes) => {
-                info!("del node {:?}", nodes);
+                trace!("router get DelNode read");
                 (None, Message::DoNoting)
             }
             Message::InterfaceRead(package) => {
+                trace!("router get interface read");
                 self.router_message((None, Message::PackageShareRead(package, 127)))
             }
             Message::DoNoting => (None, Message::DoNoting),
@@ -153,6 +157,7 @@ impl Router {
 
 impl Router {
     pub fn get_all_node(&self) -> Vec<SocketAddr> {
+        info!("dump all node");
         let v = self.ipv4_table.read().unwrap().get_all_peer();
         let o = &mut self.ipv6_table.read().unwrap().get_all_peer();
 
@@ -220,6 +225,7 @@ impl Router {
 }
 
 fn read_ip(v: &[u8]) -> IpAddr {
+    info!("{}", v.len());
     match v.len() {
         4 => Ipv4Addr::from([v[0], v[1], v[2], v[3]]).into(),
         16 => Ipv6Addr::from([
@@ -227,6 +233,9 @@ fn read_ip(v: &[u8]) -> IpAddr {
             v[14], v[15],
         ])
         .into(),
-        _ => unreachable!(),
+        _ => {
+            error!("{}", v.len());
+            unreachable!()
+        }
     }
 }

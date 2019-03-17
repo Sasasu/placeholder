@@ -1,6 +1,5 @@
 use crate::interface;
 use clap::{App, Arg, ArgMatches};
-use env_logger::{Builder, Target};
 use log::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
