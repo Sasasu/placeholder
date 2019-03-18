@@ -27,8 +27,8 @@ lazy_static! {
     };
 }
 pub struct Network {
-    rx: mpsc::UnboundedReceiver<Package>,
-    tx: mpsc::UnboundedSender<Package>,
+    interface_receiver: mpsc::UnboundedReceiver<Package>,
+    interface_send: mpsc::UnboundedSender<Package>,
 
     router_send: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
     router_receiver: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
@@ -81,8 +81,8 @@ impl Network {
         }));
 
         Network {
-            rx,
-            tx,
+            interface_receiver: rx,
+            interface_send: tx,
             socket_send: sender_to_socket,
             socket_receiver: receiver_from_socket,
             router_send: sender_to_router,
@@ -105,7 +105,7 @@ impl Future for Network {
                 Async::Ready(Some((addr, message))) => match message {
                     Message::DoNoting => {}
                     Message::InterfaceWrite(package) => {
-                        self.tx.try_send(package).unwrap();
+                        self.interface_send.try_send(package).unwrap();
                     }
                     Message::PackageShareWrite(package, ttl) => self
                         .socket_send
@@ -138,7 +138,7 @@ impl Future for Network {
         }
 
         loop {
-            match self.rx.poll()? {
+            match self.interface_receiver.poll()? {
                 Async::Ready(Some(package)) => {
                     self.send_to_router(None, Message::InterfaceRead(package));
                 }
