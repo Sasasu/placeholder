@@ -1,15 +1,16 @@
+pub mod socket;
+
 use crate::config::Config;
 use crate::generated::transport as proto;
 use crate::internal::message::Message;
-use crate::internal::package::{Buffer, Package};
+use crate::internal::package::Package;
+use crate::network::socket::Socket;
 use crate::router::{Host, Router};
 use log::*;
-use protobuf::Message as PbMessage;
-use std::collections::LinkedList;
 use std::convert::From;
 use std::io;
 use std::net::SocketAddr;
-use tokio::net::UdpSocket;
+use tokio::prelude::future::lazy;
 use tokio::prelude::Stream;
 use tokio::prelude::{Async, Future};
 use tokio::sync::mpsc;
@@ -26,25 +27,30 @@ lazy_static! {
     };
 }
 pub struct Network {
-    socket: UdpSocket,
     rx: mpsc::UnboundedReceiver<Package>,
     tx: mpsc::UnboundedSender<Package>,
-    send_buffer: LinkedList<(SocketAddr, Vec<u8>)>,
-    router_buffer: LinkedList<(Option<SocketAddr>, Message)>,
+
+    router_send: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
+    router_receiver: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
+
+    socket_send: mpsc::UnboundedSender<(SocketAddr, Message)>,
+    socket_receiver: mpsc::UnboundedReceiver<(SocketAddr, Message)>,
 }
 
 impl Network {
-    pub fn new(
-        rx: mpsc::UnboundedReceiver<Package>,
-        tx: mpsc::UnboundedSender<Package>,
-    ) -> Self {
+    pub fn new(rx: mpsc::UnboundedReceiver<Package>, tx: mpsc::UnboundedSender<Package>) -> Self {
         let c = Config::get();
-        info!("binding socket: {}:{}", "0.0.0.0", c.port);
-        let socket = UdpSocket::bind(&SocketAddr::new("0.0.0.0".parse().unwrap(), c.port))
-            .expect("bind address failure");
+
+        let (sender_to_router, _r) = mpsc::unbounded_channel();
+        let (_s, receiver_from_router) = mpsc::unbounded_channel();
+        let router = Router::new(_s, _r);
+
+        let (mut sender_to_socket, _r) = mpsc::unbounded_channel();
+        let (_s, receiver_from_socket) = mpsc::unbounded_channel();
+        let socket = Socket::new(_s, _r);
 
         // add my self to router table
-        Router::get().insert_to_table(
+        router.insert_to_table(
             c.get_v4().into(),
             c.get_v4_mask() as u16,
             c.name.clone(),
@@ -52,29 +58,40 @@ impl Network {
         );
 
         // prepare hello message to other node
-        let router_buffer = {
-            let mut router_buffer = LinkedList::new();
-            // clone for all servers
-            for host in &c.servers {
-                info!("connecting {:?}", host);
-                let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
-                socket.connect(&addr).unwrap();
-                router_buffer.push_back((Some(addr), Message::AddNodeWrite(SELF.clone())));
-            }
-            router_buffer
-        };
+        // clone for all servers
+        for host in &c.servers {
+            info!("connecting {:?}", host);
+            let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
+            socket.connect(&addr).unwrap();
+            sender_to_socket
+                .try_send((addr, Message::AddNodeWrite(SELF.clone())))
+                .unwrap();
+        }
+
+        tokio::spawn(lazy(|| {
+            router.map_err(|e| {
+                panic!(e);
+            })
+        }));
+
+        tokio::spawn(lazy(|| {
+            socket.map_err(|e| {
+                panic!(e);
+            })
+        }));
 
         Network {
             rx,
             tx,
-            socket,
-            router_buffer,
-            send_buffer: LinkedList::new(),
+            socket_send: sender_to_socket,
+            socket_receiver: receiver_from_socket,
+            router_send: sender_to_router,
+            router_receiver: receiver_from_router,
         }
     }
 
-    pub fn add_to_send_list(&mut self, addr: SocketAddr, buffer: Vec<u8>) {
-        self.send_buffer.push_back((addr, buffer));
+    pub fn send_to_router(&mut self, addr: Option<SocketAddr>, message: Message) {
+        self.router_send.try_send((addr, message)).unwrap();
     }
 }
 
@@ -84,90 +101,46 @@ impl Future for Network {
 
     fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
         loop {
-            let mut buffer = Buffer::get();
-            match self.socket.poll_recv_from(buffer.as_mut_slice())? {
-                Async::Ready((read_size, addr)) => {
-                    Buffer::set_len(buffer.as_mut(), read_size);
-                    info!("receive {} bytes from {}", read_size, addr);
-                    let message_to_router = Message::from_protobuf(Some(addr), buffer);
-                    self.router_buffer.push_back(message_to_router);
-                }
-                Async::NotReady => {
-                    Buffer::put_back(buffer);
-                    break;
-                }
-            };
-        }
-
-        while let Some((addr, message)) = self.router_buffer.pop_front() {
-            match message {
-                Message::DoNoting => {}
-                Message::InterfaceWrite(package) => {
-                    self.tx
-                        .try_send(package)
-                        .unwrap();
-                }
-                Message::PackageShareWrite(package, ttl) => self.add_to_send_list(
-                    addr.unwrap(),
-                    Message::PackageShareWrite(package, ttl)
-                        .into_protobuf()
-                        .write_to_bytes()
-                        .unwrap(),
-                ),
-                Message::AddNodeWrite(node) => match addr {
-                    None => {
-                        for host in Router::get().get_all_node() {
-                            self.add_to_send_list(
-                                host,
-                                Message::AddNodeWrite(node.clone())
-                                    .into_protobuf()
-                                    .write_to_bytes()
-                                    .unwrap(),
-                            )
-                        }
+            match self.router_receiver.poll()? {
+                Async::Ready(Some((addr, message))) => match message {
+                    Message::DoNoting => {}
+                    Message::InterfaceWrite(package) => {
+                        self.tx.try_send(package).unwrap();
                     }
-                    Some(addr) => self.add_to_send_list(
-                        addr,
-                        Message::AddNodeWrite(node)
-                            .into_protobuf()
-                            .write_to_bytes()
-                            .unwrap(),
-                    ),
+                    Message::PackageShareWrite(package, ttl) => self
+                        .socket_send
+                        .try_send((addr.unwrap(), Message::PackageShareWrite(package, ttl)))
+                        .unwrap(),
+                    Message::AddNodeWrite(node) => {
+                        self.socket_send
+                            .try_send((addr.unwrap(), Message::AddNodeWrite(node)))
+                            .unwrap();
+                    }
+                    other => {
+                        self.send_to_router(addr, other);
+                    }
                 },
-                other => {
-                    let ans = Router::get().router_message((addr, other));
-                    self.router_buffer.push_back(ans);
+                Async::Ready(None) => {
+                    panic!();
                 }
+                Async::NotReady => break,
             }
         }
 
-        // net send
-        while let Some((addr, buffer)) = self.send_buffer.pop_front() {
-            let send_res = match self.socket.poll_send_to(&buffer, &addr) {
-                Ok(t) => t,
-                Err(e) => {
-                    warn!("send package to {} error: {}, try remove peer", addr, e);
-                    Async::NotReady
+        loop {
+            match self.socket_receiver.poll()? {
+                Async::Ready(Some((addr, message))) => {
+                    self.send_to_router(Some(addr), message);
                 }
-            };
-
-            match send_res {
-                Async::Ready(send_size) => {
-                    info!("send {} bytes to {}", send_size, addr);
-                }
-                Async::NotReady => {
-                    self.add_to_send_list(addr, buffer);
-                    break;
-                }
+                Async::Ready(None) => panic!(),
+                Async::NotReady => break,
             }
         }
 
         loop {
             match self.rx.poll()? {
                 Async::Ready(Some(package)) => {
-                    let message =
-                        Router::get().router_message((None, Message::InterfaceRead(package)));
-                    self.router_buffer.push_back(message);
+                    self.send_to_router(None, Message::InterfaceRead(package));
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,

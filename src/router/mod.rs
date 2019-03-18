@@ -12,26 +12,48 @@ use crate::internal::package::Package;
 use log::*;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
+use tokio::prelude::stream::Stream;
+use tokio::prelude::{Async, Future};
+use tokio::sync::mpsc;
 
-lazy_static! {
-    static ref ROUTE_TABLE: Router = Router::new();
-}
-
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Router {
     ipv4_table: RwLock<Table>,
     ipv6_table: RwLock<Table>,
+    tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
+    rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
 }
 
 impl Router {
-    pub fn new() -> Self {
+    pub fn new(
+        tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
+        rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
+    ) -> Self {
         Router {
+            tx,
+            rx,
             ipv6_table: Table::new().into(),
             ipv4_table: Table::new().into(),
         }
     }
-    pub fn get() -> &'static Self {
-        &ROUTE_TABLE
+}
+
+impl Future for Router {
+    type Item = ();
+    type Error = mpsc::error::UnboundedRecvError;
+
+    fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
+        loop {
+            match self.rx.poll()? {
+                Async::Ready(Some(m)) => {
+                    let (addr, message) = self.router_message(m);
+                    self.tx.try_send((addr, message)).unwrap();
+                }
+                Async::Ready(None) => panic!(),
+                Async::NotReady => break,
+            };
+        }
+        Ok(Async::NotReady)
     }
 }
 
@@ -86,7 +108,7 @@ impl Router {
                 add_node.set_net_mask(init.net_mask);
 
                 let addr = m.0.unwrap();
-                add_node.set_port(addr.port() as i32);
+                add_node.set_port(addr.port().into());
                 match addr.ip() {
                     IpAddr::V6(v6) => add_node.set_real_ip(v6.octets().to_vec()),
                     IpAddr::V4(v4) => add_node.set_real_ip(v4.octets().to_vec()),
@@ -131,7 +153,7 @@ impl Router {
                 node.set_jump(jump);
                 (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
             }
-            Message::DelNodeRead(nodes) => {
+            Message::DelNodeRead(_) => {
                 trace!("router get DelNode read");
                 (None, Message::DoNoting)
             }

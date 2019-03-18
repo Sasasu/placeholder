@@ -17,8 +17,7 @@ use crate::network::Network;
 use env_logger::Builder;
 use env_logger::Target;
 use log::LevelFilter;
-use tokio::prelude::future;
-use tokio::prelude::future::Future;
+use tokio::prelude::future::{lazy, Future};
 use tokio::sync::mpsc;
 
 fn main() {
@@ -43,7 +42,7 @@ fn main() {
         .target(Target::Stderr)
         .init();
 
-    let server = future::lazy(|| {
+    let server = lazy(|| {
         let (interface_io_tx, interface_io_rx) = mpsc::unbounded_channel();
         let (message_bus_tx, message_bus_rx) = mpsc::unbounded_channel();
 
