@@ -1,11 +1,11 @@
 use crate::config::Config;
+use crate::internal::error::Error;
 use crate::internal::package::{Buffer, Package};
 use crate::utils::*;
 use libc;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::linked_list::LinkedList;
-use std::convert::From;
 use std::ffi::CString;
 use std::fs::File as StdFile;
 use std::io::Error as IoError;
@@ -105,7 +105,7 @@ impl Future for Device {
                     trace!("interface async send {} bytes", p.len());
                     self._write_buffer.push_back(p);
                 }
-                Async::Ready(None) => panic!("DW: get None"),
+                Async::Ready(None) => panic!(),
                 Async::NotReady => break,
             }
         }
@@ -171,24 +171,6 @@ impl Future for Device {
         }
 
         Ok(Async::NotReady)
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    IoError(IoError),
-    RecvError(mpsc::error::UnboundedRecvError),
-}
-
-impl From<mpsc::error::UnboundedRecvError> for Error {
-    fn from(e: mpsc::error::UnboundedRecvError) -> Self {
-        Error::RecvError(e)
-    }
-}
-
-impl From<IoError> for Error {
-    fn from(e: IoError) -> Self {
-        Error::IoError(e)
     }
 }
 
