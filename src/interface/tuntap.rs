@@ -1,3 +1,4 @@
+use crate::internal::package::Buffer;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
@@ -29,9 +30,8 @@ pub enum Type {
 
 pub struct TunTap {
     fd: RawFd,
-    aio_context: AioContext,
-    reade_bytes: Arc<RwLock<u64>>,
-    write_bytes: Arc<RwLock<u64>>,
+    reade_nbytes: Arc<RwLock<u64>>,
+    write_nbytes: Arc<RwLock<u64>>,
 }
 
 impl TunTap {
@@ -41,11 +41,12 @@ impl TunTap {
 
         let fd = unsafe {
             let fd = match t {
-                Type::Tun => libc::open(TUN_PATH.as_ptr(), libc::O_RDWR | libc::O_NONBLOCK),
-                Type::Tap => libc::open(
-                    TAP_PATH.as_ptr(),
-                    libc::O_RDWR | libc::O_NONBLOCK | libc::O_DIRECT,
-                ),
+                // ??????
+                // open with libc::O_DIRECT get EINVAL 22, maybe because /dev/tun/tun is a
+                // char device not block device, but open witch libc::O_NONBLOCK get os error -11 (unknown)
+                // open with open libc::O_RDWR works fine
+                Type::Tun => libc::open(TUN_PATH.as_ptr(), libc::O_RDWR),
+                Type::Tap => libc::open(TAP_PATH.as_ptr(), libc::O_RDWR),
             };
 
             if fd < 0 {
@@ -62,40 +63,42 @@ impl TunTap {
             fd
         };
 
-        let aio_context =
-            AioContext::new(&DefaultExecutor::current(), 2).expect("aio context crate error");
-
         TunTap {
             fd,
-            aio_context,
-            reade_bytes: Arc::new(0.into()),
-            write_bytes: Arc::new(0.into()),
+            reade_nbytes: Arc::new(0.into()),
+            write_nbytes: Arc::new(0.into()),
         }
     }
 }
 
 impl TunTap {
     pub fn read(&mut self, buf: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = ()> {
-        let n = self.write_bytes.clone();
+        info!("READ");
+        let n = self.write_nbytes.clone();
 
-        self.aio_context
-            .read(self.fd, *self.write_bytes.read().unwrap(), buf)
-            .map_err(move |e| panic!("{:?}", e))
-            .and_then(move |s| {
-                n.write().unwrap().add_assign(s.len() as u64);
-                Ok(s)
+        AioContext::new(&DefaultExecutor::current(), 2)
+            .expect("aio context crate error")
+            .read(self.fd, *self.write_nbytes.read().unwrap(), buf)
+            .map_err(move |e| panic!("read {:?}", e))
+            .and_then(move |(mut buf, nbytes)| {
+                Buffer::set_len(&mut buf, nbytes as usize);
+                n.write().unwrap().add_assign(nbytes);
+                Ok(buf)
             })
     }
 
     pub fn write(&mut self, buf: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = ()> {
-        let n = self.reade_bytes.clone();
+        info!("WRITE");
+        let n = self.reade_nbytes.clone();
 
-        self.aio_context
-            .write(self.fd, *self.reade_bytes.read().unwrap(), buf)
-            .map_err(move |e| panic!("{:?}", e))
-            .and_then(move |s| {
-                n.write().unwrap().add_assign(s.len() as u64);
-                Ok(s)
+        AioContext::new(&DefaultExecutor::current(), 2)
+            .expect("aio context crate error")
+            .write(self.fd, 0 /*self.reade_nbytes.read().unwrap()*/, buf)
+            .map_err(move |e| panic!("write {:?}", e))
+            .and_then(move |(mut buf, nbytes)| {
+                Buffer::set_len(&mut buf, nbytes as usize);
+                n.write().unwrap().add_assign(nbytes);
+                Ok(buf)
             })
     }
 }
