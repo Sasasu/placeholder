@@ -8,7 +8,6 @@ use crate::internal::error::Error;
 use crate::internal::package::{Buffer, Package};
 use crate::utils::*;
 use log::*;
-use std::collections::linked_list::LinkedList;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::prelude::stream::Stream;
@@ -17,7 +16,6 @@ use tokio::sync::mpsc;
 
 pub struct Device {
     interface: TunTap,
-    buffer: LinkedList<Package>,
     receiver_net: mpsc::UnboundedReceiver<Package>,
     sender_net: mpsc::UnboundedSender<Package>,
     is_reading: Arc<AtomicBool>,
@@ -34,7 +32,6 @@ impl Device {
             interface,
             receiver_net: rx,
             sender_net: tx,
-            buffer: LinkedList::new(),
             is_reading: Arc::new(false.into()),
         }
     }
@@ -49,24 +46,13 @@ impl Future for Device {
         loop {
             match self.receiver_net.poll()? {
                 Async::Ready(Some(p)) => {
-                    trace!("interface async write {} bytes", p.len());
-                    self.buffer.push_back(p);
+                    tokio::spawn(self.interface.write(p.raw_package).and_then(|v| {
+                        trace!("interface write {} bytes", v.len());
+                        Ok(())
+                    }));
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
-            }
-        }
-
-        loop {
-            match self.buffer.pop_front() {
-                None => break,
-                Some(package) => {
-                    tokio::spawn(
-                        self.interface
-                            .write(package.raw_package)
-                            .and_then(|_| Ok(())),
-                    );
-                }
             }
         }
 
