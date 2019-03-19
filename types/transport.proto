@@ -33,9 +33,7 @@ message Node {
 message Init {
   bytes sub_net = 1;
   uint32 net_mask = 2;
-
   string name = 5;
-  int32 jump = 6;
 }
 
 message PingPong { string name = 1; }

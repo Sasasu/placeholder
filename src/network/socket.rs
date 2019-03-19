@@ -116,26 +116,20 @@ impl Future for Socket {
         loop {
             match self.buffer.pop_front() {
                 None => break,
-                Some((addr, buffer)) => match addr.ip() {
-                    IpAddr::V4(_) => {
-                        match self.v4.poll_send_to(&buffer, &addr)? {
-                            Async::Ready(size) => info!("write {} bytes to {}", size, &addr),
-                            Async::NotReady => {
-                                self.buffer.push_back((addr, buffer));
-                                break;
-                            }
-                        };
-                    }
-                    IpAddr::V6(_) => {
-                        match self.v6.poll_send_to(&buffer, &addr)? {
-                            Async::Ready(size) => info!("write {} bytes to {}", size, &addr),
-                            Async::NotReady => {
-                                self.buffer.push_back((addr, buffer));
-                                break;
-                            }
-                        };
-                    }
-                },
+
+                Some((addr, buffer)) => {
+                    let socket = match addr.ip() {
+                        IpAddr::V4(_) => &mut self.v4,
+                        IpAddr::V6(_) => &mut self.v6,
+                    };
+                    match socket.poll_send_to(&buffer, &addr)? {
+                        Async::Ready(size) => info!("write {} bytes to {}", size, &addr),
+                        Async::NotReady => {
+                            self.buffer.push_back((addr, buffer));
+                            break;
+                        }
+                    };
+                }
             }
         }
 

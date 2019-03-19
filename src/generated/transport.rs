@@ -577,7 +577,6 @@ pub struct Init {
     pub sub_net: ::std::vec::Vec<u8>,
     pub net_mask: u32,
     pub name: ::std::string::String,
-    pub jump: i32,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -654,21 +653,6 @@ impl Init {
     pub fn get_name(&self) -> &str {
         &self.name
     }
-
-    // int32 jump = 6;
-
-    pub fn clear_jump(&mut self) {
-        self.jump = 0;
-    }
-
-    // Param is passed by value, moved
-    pub fn set_jump(&mut self, v: i32) {
-        self.jump = v;
-    }
-
-    pub fn get_jump(&self) -> i32 {
-        self.jump
-    }
 }
 
 impl ::protobuf::Message for Init {
@@ -693,13 +677,6 @@ impl ::protobuf::Message for Init {
                 5 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.name)?;
                 },
-                6 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
-                    }
-                    let tmp = is.read_int32()?;
-                    self.jump = tmp;
-                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -721,9 +698,6 @@ impl ::protobuf::Message for Init {
         if !self.name.is_empty() {
             my_size += ::protobuf::rt::string_size(5, &self.name);
         }
-        if self.jump != 0 {
-            my_size += ::protobuf::rt::value_size(6, self.jump, ::protobuf::wire_format::WireTypeVarint);
-        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -738,9 +712,6 @@ impl ::protobuf::Message for Init {
         }
         if !self.name.is_empty() {
             os.write_string(5, &self.name)?;
-        }
-        if self.jump != 0 {
-            os.write_int32(6, self.jump)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -799,11 +770,6 @@ impl ::protobuf::Message for Init {
                     |m: &Init| { &m.name },
                     |m: &mut Init| { &mut m.name },
                 ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
-                    "jump",
-                    |m: &Init| { &m.jump },
-                    |m: &mut Init| { &mut m.jump },
-                ));
                 ::protobuf::reflect::MessageDescriptor::new::<Init>(
                     "Init",
                     fields,
@@ -829,7 +795,6 @@ impl ::protobuf::Clear for Init {
         self.clear_sub_net();
         self.clear_net_mask();
         self.clear_name();
-        self.clear_jump();
         self.unknown_fields.clear();
     }
 }
@@ -1529,16 +1494,15 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ode\x12\x11\n\x07sub_net\x18\x01\x20\x01(\x0cB\0\x12\x12\n\x08net_mask\
     \x18\x02\x20\x01(\rB\0\x12\x0e\n\x04name\x18\x05\x20\x01(\tB\0\x12\x0e\n\
     \x04jump\x18\x06\x20\x01(\x05B\0\x12\x11\n\x07real_ip\x18\x07\x20\x01(\
-    \x0cB\0\x12\x0e\n\x04port\x18\x08\x20\x01(\x05B\0:\0\"O\n\x04Init\x12\
+    \x0cB\0\x12\x0e\n\x04port\x18\x08\x20\x01(\x05B\0:\0\"?\n\x04Init\x12\
     \x11\n\x07sub_net\x18\x01\x20\x01(\x0cB\0\x12\x12\n\x08net_mask\x18\x02\
-    \x20\x01(\rB\0\x12\x0e\n\x04name\x18\x05\x20\x01(\tB\0\x12\x0e\n\x04jump\
-    \x18\x06\x20\x01(\x05B\0:\0\"\x1c\n\x08PingPong\x12\x0e\n\x04name\x18\
-    \x01\x20\x01(\tB\0:\0\"\xaf\x01\n\x07Payload\x12\"\n\x07package\x18\x01\
-    \x20\x01(\x0b2\r.PackageShardH\0B\0\x12\x1b\n\x08add_node\x18\x03\x20\
-    \x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\x08del_node\x18\x04\x20\x01(\x0b2\
-    \x05.NodeH\0B\0\x12\x1c\n\tinit_node\x18\x05\x20\x01(\x0b2\x05.InitH\0B\
-    \0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b2\t.PingPongH\0B\0B\t\n\x07payl\
-    oad:\0B\0b\x06proto3\
+    \x20\x01(\rB\0\x12\x0e\n\x04name\x18\x05\x20\x01(\tB\0:\0\"\x1c\n\x08Pin\
+    gPong\x12\x0e\n\x04name\x18\x01\x20\x01(\tB\0:\0\"\xaf\x01\n\x07Payload\
+    \x12\"\n\x07package\x18\x01\x20\x01(\x0b2\r.PackageShardH\0B\0\x12\x1b\n\
+    \x08add_node\x18\x03\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1b\n\x08del_node\
+    \x18\x04\x20\x01(\x0b2\x05.NodeH\0B\0\x12\x1c\n\tinit_node\x18\x05\x20\
+    \x01(\x0b2\x05.InitH\0B\0\x12\x1b\n\x04ping\x18\x07\x20\x01(\x0b2\t.Ping\
+    PongH\0B\0B\t\n\x07payload:\0B\0b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {
