@@ -2,14 +2,14 @@ language: rust
 sudo: false
 cache: cargo
 rust:
-  - nightly
+  - nightly-2019-02-08
 script:
   - cargo test --verbose --all --locked
 
 matrix:
   include:
 
-  - rust: nightly
+  - rust: nightly-2019-02-08
     script:
-    - rustup component add rustfmt-preview --toolchain nightly
-    - cargo +nightly fmt --all -- --check
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check
