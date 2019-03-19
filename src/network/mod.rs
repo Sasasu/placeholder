@@ -6,7 +6,6 @@ use crate::internal::message::Message;
 use crate::internal::package::Package;
 use crate::network::socket::Socket;
 use crate::router::{Host, Router};
-use log::*;
 use std::convert::From;
 use std::io;
 use std::net::SocketAddr;
@@ -16,13 +15,13 @@ use tokio::prelude::{Async, Future};
 use tokio::sync::mpsc;
 
 lazy_static! {
-    pub static ref SELF: proto::Node = {
+    pub static ref SELF: proto::Init = {
         let c = Config::get();
-        let mut myself = proto::Node::new();
+        let mut myself = proto::Init::new();
         myself.set_sub_net(c.get_v4().octets().to_vec());
         myself.set_net_mask(c.get_v4_mask());
         myself.set_name(c.name.clone());
-        myself.set_jump(1);
+        myself.set_jump(0);
         myself
     };
 }
@@ -30,11 +29,11 @@ pub struct Network {
     interface_receiver: mpsc::UnboundedReceiver<Package>,
     interface_send: mpsc::UnboundedSender<Package>,
 
-    router_send: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
-    router_receiver: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
+    router_send: mpsc::UnboundedSender<Message>,
+    router_receiver: mpsc::UnboundedReceiver<Message>,
 
-    socket_send: mpsc::UnboundedSender<(SocketAddr, Message)>,
-    socket_receiver: mpsc::UnboundedReceiver<(SocketAddr, Message)>,
+    socket_send: mpsc::UnboundedSender<Message>,
+    socket_receiver: mpsc::UnboundedReceiver<Message>,
 }
 
 impl Network {
@@ -60,11 +59,9 @@ impl Network {
         // prepare hello message to other node
         // clone for all servers
         for host in &c.servers {
-            info!("connecting {:?}", host);
             let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
-            socket.connect(&addr).unwrap();
             sender_to_socket
-                .try_send((addr, Message::AddNodeWrite(SELF.clone())))
+                .try_send(Message::InitNodeWrite(addr, SELF.clone()))
                 .unwrap();
         }
 
@@ -89,10 +86,6 @@ impl Network {
             router_receiver: receiver_from_router,
         }
     }
-
-    pub fn send_to_router(&mut self, addr: Option<SocketAddr>, message: Message) {
-        self.router_send.try_send((addr, message)).unwrap();
-    }
 }
 
 impl Future for Network {
@@ -102,22 +95,22 @@ impl Future for Network {
     fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
         loop {
             match self.router_receiver.poll()? {
-                Async::Ready(Some((addr, message))) => match message {
+                Async::Ready(Some(message)) => match message {
                     Message::DoNoting => {}
-                    Message::InterfaceWrite(package) => {
+                    Message::InterfaceWrite(mut package) => {
                         self.interface_send.try_send(package).unwrap();
                     }
-                    Message::PackageShareWrite(package, ttl) => self
+                    Message::PackageShareWrite(addr, package, ttl) => self
                         .socket_send
-                        .try_send((addr.unwrap(), Message::PackageShareWrite(package, ttl)))
+                        .try_send(Message::PackageShareWrite(addr, package, ttl))
                         .unwrap(),
-                    Message::AddNodeWrite(node) => {
+                    Message::AddNodeWrite(addrs, node) => {
                         self.socket_send
-                            .try_send((addr.unwrap(), Message::AddNodeWrite(node)))
+                            .try_send(Message::AddNodeWrite(addrs, node))
                             .unwrap();
                     }
                     other => {
-                        self.send_to_router(addr, other);
+                        self.router_send.try_send(other).unwrap();
                     }
                 },
                 Async::Ready(None) => {
@@ -129,8 +122,8 @@ impl Future for Network {
 
         loop {
             match self.socket_receiver.poll()? {
-                Async::Ready(Some((addr, message))) => {
-                    self.send_to_router(Some(addr), message);
+                Async::Ready(Some(message)) => {
+                    self.router_send.try_send(message).unwrap();
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
@@ -140,7 +133,9 @@ impl Future for Network {
         loop {
             match self.interface_receiver.poll()? {
                 Async::Ready(Some(package)) => {
-                    self.send_to_router(None, Message::InterfaceRead(package));
+                    self.router_send
+                        .try_send(Message::InterfaceRead(package))
+                        .unwrap();
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
