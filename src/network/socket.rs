@@ -15,16 +15,13 @@ use tokio::sync::mpsc;
 pub struct Socket {
     v6: UdpSocket,
     v4: UdpSocket,
-    tx: mpsc::UnboundedSender<(SocketAddr, Message)>,
-    rx: mpsc::UnboundedReceiver<(SocketAddr, Message)>,
+    tx: mpsc::UnboundedSender<Message>,
+    rx: mpsc::UnboundedReceiver<Message>,
     buffer: LinkedList<(SocketAddr, Vec<u8>)>,
 }
 
 impl Socket {
-    pub fn new(
-        tx: mpsc::UnboundedSender<(SocketAddr, Message)>,
-        rx: mpsc::UnboundedReceiver<(SocketAddr, Message)>,
-    ) -> Self {
+    pub fn new(tx: mpsc::UnboundedSender<Message>, rx: mpsc::UnboundedReceiver<Message>) -> Self {
         let c = Config::get();
         let v6_addr = SocketAddr::new("::".parse().unwrap(), c.port);
         info!("bind to {}", v6_addr);
@@ -71,8 +68,8 @@ impl Future for Socket {
                 Async::Ready((read_size, addr)) => {
                     Buffer::set_len(buffer.as_mut(), read_size);
                     info!("receive {} bytes from {}", read_size, addr);
-                    let message_to_router = Message::from_protobuf(buffer);
-                    self.tx.try_send((addr, message_to_router)).unwrap();
+                    let message_to_router = Message::from_protobuf(addr, buffer);
+                    self.tx.try_send(message_to_router).unwrap();
                 }
                 Async::NotReady => {
                     Buffer::put_back(buffer);
@@ -87,8 +84,8 @@ impl Future for Socket {
                 Async::Ready((read_size, addr)) => {
                     Buffer::set_len(buffer.as_mut(), read_size);
                     info!("receive {} bytes from {}", read_size, addr);
-                    let message_to_router = Message::from_protobuf(buffer);
-                    self.tx.try_send((addr, message_to_router)).unwrap();
+                    let message_to_router = Message::from_protobuf(addr, buffer);
+                    self.tx.try_send(message_to_router).unwrap();
                 }
                 Async::NotReady => {
                     Buffer::put_back(buffer);
@@ -100,9 +97,17 @@ impl Future for Socket {
         loop {
             match self.rx.poll()? {
                 Async::Ready(None) => panic!(),
-                Async::Ready(Some((addr, message))) => {
-                    let b = message.into_bytes();
-                    self.buffer.push_back((addr, b));
+                Async::Ready(Some(message)) => {
+                    if let Message::InitNodeWrite(addr, _) = message {
+                        info!("{} is initializing myself", addr);
+                        self.connect(&addr).unwrap();
+                    }
+
+                    let (addr, buffer) = message.write_bytes();
+                    for a in addr {
+                        // TODO do not copy
+                        self.buffer.push_back((a, buffer.clone()));
+                    }
                 }
                 Async::NotReady => break,
             }

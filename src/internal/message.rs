@@ -1,6 +1,7 @@
 use super::package::Package;
 use crate::generated::transport::{Init, Node, PackageShard, Payload, PingPong};
 use log::*;
+use std::net::SocketAddr;
 
 // the message bus
 #[derive(Debug)]
@@ -9,18 +10,20 @@ pub enum Message {
     InterfaceWrite(Package),
 
     PackageShareRead(Package, u32),
-    PackageShareWrite(Package, u32),
+    PackageShareWrite(SocketAddr, Package, u32),
 
-    AddNodeRead(Node),
-    AddNodeWrite(Node),
+    AddNodeRead(SocketAddr, Node),
+    // always bordcast
+    AddNodeWrite(Vec<SocketAddr>, Node),
 
-    DelNodeRead(Node),
-    DelNodeWrite(Node),
+    DelNodeRead(SocketAddr, Node),
+    DelNodeWrite(SocketAddr, Node),
 
-    InitNode(Init),
+    InitNodeRead(SocketAddr, Init),
+    InitNodeWrite(SocketAddr, Init),
 
-    PingPongRead(String),
-    PingPongWrite(String),
+    PingPongRead(SocketAddr, String),
+    PingPongWrite(SocketAddr, String),
 
     DoNoting,
 }
@@ -29,49 +32,55 @@ impl Message {
     /// message to protobuf message
     ///
     /// only support network and router
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn write_bytes(self) -> (Vec<SocketAddr>, Vec<u8>) {
         let mut payload = Payload::new();
+        let mut addrs = vec![];
         match self {
-            Message::PackageShareWrite(package, ttl) => {
+            Message::PackageShareWrite(a, package, ttl) => {
                 let mut package_shard = PackageShard::new();
                 package_shard.set_package(package.raw_package);
                 package_shard.set_ttl(ttl);
                 payload.set_package(package_shard);
+                addrs.push(a);
             }
-            Message::AddNodeWrite(node) => {
+            Message::AddNodeWrite(mut a, node) => {
                 payload.set_add_node(node);
+                addrs.append(&mut a);
             }
-            Message::DelNodeWrite(node) => {
+            Message::DelNodeWrite(a, node) => {
                 payload.set_del_node(node);
+                addrs.push(a);
             }
-            Message::InitNode(init) => {
+            Message::InitNodeWrite(a, init) => {
                 payload.set_init_node(init);
+                addrs.push(a);
             }
-            Message::PingPongWrite(name) => {
+            Message::PingPongWrite(a, name) => {
                 let mut wrapper = PingPong::new();
                 wrapper.set_name(name);
                 payload.set_ping(wrapper);
+                addrs.push(a);
             }
-            Message::InterfaceRead(_) | Message::InterfaceWrite(_) | Message::DoNoting => {
-                unreachable!("can not covert to protobuf message, {:?}", self)
-            }
-            Message::PingPongRead(_)
-            | Message::AddNodeRead(_)
-            | Message::PackageShareRead(_, _)
-            | Message::DelNodeRead(_) => unreachable!(
-                "can not covert response message to protobuf message, {:?}",
-                self
-            ),
+            Message::InterfaceRead(_) => panic!("can not write InterfaceRead to bytes"),
+            Message::InterfaceWrite(_) => panic!("can not write InterfaceWrite to bytes"),
+            Message::DoNoting => panic!("can not write DoNoting to bytes"),
+            Message::PingPongRead(_, _) => panic!("can not write PingPingRead to bytes"),
+            Message::AddNodeRead(_, _) => panic!("can not write AddNodeRead to bytes"),
+            Message::PackageShareRead(_, _) => panic!("can not write PackageShareRead to bytes"),
+            Message::DelNodeRead(_, _) => panic!("can not write DelNodeRead to bytes"),
+            Message::InitNodeRead(_, _) => panic!("can not write InitNodeWrite to bytes"),
         };
-        (Box::new(payload) as Box<protobuf::Message>)
+        let bytes = (Box::new(payload) as Box<protobuf::Message>)
             .write_to_bytes()
-            .unwrap()
+            .unwrap();
+        (addrs, bytes)
     }
 
     /// protobuf message to message
-    pub fn from_protobuf(buffer: Vec<u8>) -> Self {
+    pub fn from_protobuf(addr: SocketAddr, buffer: Vec<u8>) -> Self {
         use crate::generated::transport::Payload_oneof_payload as PayloadOneof;
         use protobuf::Message as ProtoMessage;
+
         let mut payload = Payload::new();
         if let Err(e) = payload.merge_from_bytes(&buffer) {
             warn!("error to decode protobuf, drop package {}", e);
@@ -82,14 +91,14 @@ impl Message {
                 warn!("no payload, drop package");
                 (Message::DoNoting)
             }
-            Some(PayloadOneof::ping(value)) => Message::PingPongRead(value.name),
+            Some(PayloadOneof::ping(value)) => Message::PingPongRead(addr, value.name),
             Some(PayloadOneof::package(package)) => {
                 let p = Package::from_buffer(package.package);
                 Message::PackageShareRead(p, package.ttl)
             }
-            Some(PayloadOneof::add_node(node)) => Message::AddNodeRead(node),
-            Some(PayloadOneof::del_node(node)) => Message::DelNodeRead(node),
-            Some(PayloadOneof::init_node(node)) => Message::InitNode(node),
+            Some(PayloadOneof::add_node(node)) => Message::AddNodeRead(addr, node),
+            Some(PayloadOneof::del_node(node)) => Message::DelNodeRead(addr, node),
+            Some(PayloadOneof::init_node(node)) => Message::InitNodeRead(addr, node),
         }
     }
 }

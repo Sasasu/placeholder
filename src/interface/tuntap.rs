@@ -64,7 +64,7 @@ impl TunTap {
             fd
         };
         let io_context =
-            AioContext::new(&DefaultExecutor::current(), 2).expect("aio context crate error");
+            AioContext::new(&DefaultExecutor::current(), 10).expect("aio context crate error");
 
         TunTap {
             fd,

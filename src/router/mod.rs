@@ -18,15 +18,12 @@ use tokio::sync::mpsc;
 pub struct Router {
     ipv4_table: RwLock<Table>,
     ipv6_table: RwLock<Table>,
-    tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
-    rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
+    tx: mpsc::UnboundedSender<Message>,
+    rx: mpsc::UnboundedReceiver<Message>,
 }
 
 impl Router {
-    pub fn new(
-        tx: mpsc::UnboundedSender<(Option<SocketAddr>, Message)>,
-        rx: mpsc::UnboundedReceiver<(Option<SocketAddr>, Message)>,
-    ) -> Self {
+    pub fn new(tx: mpsc::UnboundedSender<Message>, rx: mpsc::UnboundedReceiver<Message>) -> Self {
         Router {
             tx,
             rx,
@@ -44,8 +41,8 @@ impl Future for Router {
         loop {
             match self.rx.poll()? {
                 Async::Ready(Some(m)) => {
-                    let (addr, message) = self.router_message(m);
-                    self.tx.try_send((addr, message)).unwrap();
+                    let message = self.router_message(m);
+                    self.tx.try_send(message).unwrap();
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
@@ -56,11 +53,8 @@ impl Future for Router {
 }
 
 impl Router {
-    pub fn router_message(
-        &self,
-        m: (Option<SocketAddr>, Message),
-    ) -> (Option<SocketAddr>, Message) {
-        match m.1 {
+    pub fn router_message(&self, m: Message) -> Message {
+        match m {
             Message::PackageShareRead(package, ttl) => {
                 trace!("router get PackageShareRead read");
                 match self.find_in_table(&package) {
@@ -72,7 +66,7 @@ impl Router {
                                 package.destination_address(),
                                 addr
                             );
-                            (Some(*addr), Message::PackageShareWrite(package, ttl))
+                            Message::PackageShareWrite(*addr, package, ttl)
                         }
                         Some(Host::Localhost) => {
                             info!(
@@ -80,11 +74,15 @@ impl Router {
                                 package.source_address(),
                                 package.destination_address()
                             );
-                            (None, Message::InterfaceWrite(package))
+                            Message::InterfaceWrite(package)
                         }
                         None | Some(Host::Unreachable) => {
-                            info!("{} -> {} find node in router but can'find edge to reach, drop package", package.source_address(), package.destination_address());
-                            (None, Message::DoNoting)
+                            info!(
+                                "{} -> {} can'find edge to reach, drop package",
+                                package.source_address(),
+                                package.destination_address()
+                            );
+                            Message::DoNoting
                         }
                     },
                     None => {
@@ -93,42 +91,43 @@ impl Router {
                             package.source_address(),
                             package.destination_address()
                         );
-                        (None, Message::DoNoting)
+                        Message::DoNoting
                     }
                 }
             }
-            Message::InitNode(init) => {
-                trace!("router get InitNode");
+            Message::InitNodeRead(addr, init) => {
+                trace!("router get InitNodeRead from {}", addr);
                 let mut add_node = Node::new();
                 add_node.set_jump(1);
-                add_node.set_name(init.name);
+                add_node.set_name(init.name.clone());
                 add_node.set_sub_net(init.sub_net);
                 add_node.set_net_mask(init.net_mask);
 
-                let addr = m.0.unwrap();
                 add_node.set_port(addr.port().into());
                 match addr.ip() {
                     IpAddr::V6(v6) => add_node.set_real_ip(v6.octets().to_vec()),
                     IpAddr::V4(v4) => add_node.set_real_ip(v4.octets().to_vec()),
                 }
-                // use None to broadcast
-                (None, Message::AddNodeWrite(add_node))
+
+                self.insert_to_table(
+                    read_ip(&add_node.sub_net),
+                    init.net_mask as u16,
+                    init.name,
+                    Host::Socket(addr),
+                );
+                Message::AddNodeWrite(self.get_all_node(), add_node)
             }
-            Message::AddNodeRead(mut node) => {
-                trace!("router get AddNode read");
-                if m.0.is_none() {
-                    info!("can not add node for source none");
-                    return (None, Message::DoNoting);
-                }
+            Message::AddNodeRead(addr, mut node) => {
+                trace!("router get AddNode read from {}", addr);
 
                 if node.name == Config::get().name {
                     info!("receive myself");
-                    return (None, Message::DoNoting);
+                    return Message::DoNoting;
                 }
 
                 let source = {
                     if node.jump == 0 {
-                        m.0.unwrap()
+                        addr
                     } else {
                         let ip = read_ip(&node.real_ip);
                         SocketAddr::new(ip, node.port as u16)
@@ -146,38 +145,35 @@ impl Router {
                     );
                 }
 
-                // board cast every node
                 let jump = node.get_jump() + 1;
                 node.set_jump(jump);
-                (Some(m.0.unwrap()), Message::AddNodeWrite(node.clone()))
+                Message::AddNodeWrite(self.get_all_node(), node.clone())
             }
-            Message::DelNodeRead(_) => {
-                trace!("router get DelNode read");
-                (None, Message::DoNoting)
+            Message::DelNodeRead(addr, _) => {
+                trace!("router get DelNode read from {}", addr);
+                Message::DoNoting
             }
             Message::InterfaceRead(package) => {
                 trace!("router get interface read");
-                self.router_message((None, Message::PackageShareRead(package, 127)))
+                self.router_message(Message::PackageShareRead(package, 127))
             }
-            Message::DoNoting => (None, Message::DoNoting),
-            Message::PingPongRead(_name) => {
-                (m.0, Message::PingPongWrite(Config::get().name.clone()))
+            Message::DoNoting => Message::DoNoting,
+            Message::PingPongRead(addr, _name) => {
+                info!("get PingPongRead from {}", addr);
+                Message::PingPongWrite(addr, Config::get().name.clone())
             }
-            Message::InterfaceWrite(_)
-            | Message::PingPongWrite(_)
-            | Message::AddNodeWrite(_)
-            | Message::PackageShareWrite(_, _)
-            | Message::DelNodeWrite(_) => {
-                info!("wrong message type send to router");
-                (None, Message::DoNoting)
-            }
+            Message::InterfaceWrite(_) => panic!("InterfaceWrite can not route"),
+            Message::PingPongWrite(_, _) => panic!("PingPongWrite can not route"),
+            Message::AddNodeWrite(_, _) => panic!("AddNodeWrite can not route"),
+            Message::PackageShareWrite(_, _, _) => panic!("PackageShareWrite can not route"),
+            Message::DelNodeWrite(_, _) => panic!("DelNodeWrite can not route"),
+            Message::InitNodeWrite(_, _) => panic!("InitNodeWrite can not route"),
         }
     }
 }
 
 impl Router {
     pub fn get_all_node(&self) -> Vec<SocketAddr> {
-        info!("dump all node");
         let v = self.ipv4_table.read().unwrap().get_all_peer();
         let o = &mut self.ipv6_table.read().unwrap().get_all_peer();
 
@@ -245,7 +241,6 @@ impl Router {
 }
 
 fn read_ip(v: &[u8]) -> IpAddr {
-    info!("{}", v.len());
     match v.len() {
         4 => Ipv4Addr::from([v[0], v[1], v[2], v[3]]).into(),
         16 => Ipv6Addr::from([
@@ -254,7 +249,7 @@ fn read_ip(v: &[u8]) -> IpAddr {
         ])
         .into(),
         _ => {
-            error!("{}", v.len());
+            error!("try read with length {}", v.len());
             unreachable!()
         }
     }

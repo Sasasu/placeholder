@@ -1,3 +1,4 @@
+use log::*;
 use radix_trie::Trie;
 use radix_trie::TrieCommon;
 use std::net::{IpAddr, SocketAddr};
@@ -58,6 +59,7 @@ impl Table {
     pub fn get_all_peer(&self) -> Vec<Peer> {
         let mut v = vec![];
         for (_, node) in self.table.iter() {
+            info!("dump {:?}", node);
             v.push(node.clone());
         }
         v

@@ -79,19 +79,16 @@ impl Future for Device {
             let task = task::current();
 
             let buffer = Buffer::get();
-            let s = self
-                .interface
-                .read(buffer)
-                .and_then(move |s| {
-                    info!("read {} bytes from tuntap", s.len());
-                    let package = Package::from_buffer(s);
-                    sender.try_send(package).unwrap();
+            let s = self.interface.read(buffer).and_then(move |s| {
+                info!("read {} bytes from tuntap", s.len());
+                let package = Package::from_buffer(s);
+                sender.try_send(package).unwrap();
 
-                    is_reading.store(false, Ordering::SeqCst);
-                    task.notify();
+                is_reading.store(false, Ordering::SeqCst);
+                task.notify();
 
-                    Ok(())
-                });
+                Ok(())
+            });
 
             tokio::spawn(s);
         }
