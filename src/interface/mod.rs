@@ -72,7 +72,6 @@ impl Future for Device {
 
         if false == self.is_reading.load(Ordering::SeqCst) {
             use tokio::prelude::task;
-            info!("read start");
             self.is_reading.store(true, Ordering::SeqCst);
 
             let is_reading = self.is_reading.clone();
@@ -83,10 +82,6 @@ impl Future for Device {
             let s = self
                 .interface
                 .read(buffer)
-                .then(move |s| {
-                    info!("read task started");
-                    s
-                })
                 .and_then(move |s| {
                     info!("read {} bytes from tuntap", s.len());
                     let package = Package::from_buffer(s);

@@ -32,6 +32,7 @@ pub struct TunTap {
     fd: RawFd,
     reade_nbytes: Arc<RwLock<u64>>,
     write_nbytes: Arc<RwLock<u64>>,
+    io_context: AioContext,
 }
 
 impl TunTap {
@@ -62,9 +63,12 @@ impl TunTap {
 
             fd
         };
+        let io_context =
+            AioContext::new(&DefaultExecutor::current(), 2).expect("aio context crate error");
 
         TunTap {
             fd,
+            io_context,
             reade_nbytes: Arc::new(0.into()),
             write_nbytes: Arc::new(0.into()),
         }
@@ -73,11 +77,9 @@ impl TunTap {
 
 impl TunTap {
     pub fn read(&mut self, buf: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = ()> {
-        info!("READ");
         let n = self.write_nbytes.clone();
 
-        AioContext::new(&DefaultExecutor::current(), 2)
-            .expect("aio context crate error")
+        self.io_context
             .read(self.fd, *self.write_nbytes.read().unwrap(), buf)
             .map_err(move |e| panic!("read {:?}", e))
             .and_then(move |(mut buf, nbytes)| {
@@ -88,11 +90,9 @@ impl TunTap {
     }
 
     pub fn write(&mut self, buf: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = ()> {
-        info!("WRITE");
         let n = self.reade_nbytes.clone();
 
-        AioContext::new(&DefaultExecutor::current(), 2)
-            .expect("aio context crate error")
+        self.io_context
             .write(self.fd, 0 /*self.reade_nbytes.read().unwrap()*/, buf)
             .map_err(move |e| panic!("write {:?}", e))
             .and_then(move |(mut buf, nbytes)| {
