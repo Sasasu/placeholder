@@ -38,7 +38,7 @@ pub struct TunTap {
 impl TunTap {
     pub fn new(device_name: &str, t: Type) -> Self {
         info!("crate new device: {:?}, type: {:?}", device_name, t);
-        let c_device_name = CString::new(device_name.clone()).unwrap();
+        let c_device_name = CString::new(device_name).unwrap();
 
         let fd = unsafe {
             let fd = match t {
