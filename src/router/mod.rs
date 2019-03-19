@@ -1,7 +1,5 @@
 pub mod peer;
 pub mod table;
-#[cfg(test)]
-pub mod test;
 
 pub use self::peer::{Host, Peer};
 pub use self::table::{LikeRouter, Table};
