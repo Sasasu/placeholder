@@ -70,7 +70,7 @@ impl Future for Device {
             }
         }
 
-        if false == self.is_reading.load(Ordering::SeqCst) {
+        if !self.is_reading.load(Ordering::SeqCst) {
             use tokio::prelude::task;
             self.is_reading.store(true, Ordering::SeqCst);
 
