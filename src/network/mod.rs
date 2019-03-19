@@ -15,9 +15,17 @@ use tokio::prelude::{Async, Future};
 use tokio::sync::mpsc;
 
 lazy_static! {
-    pub static ref SELF: proto::Init = {
+    pub static ref SELF_INIT: proto::Init = {
         let c = Config::get();
         let mut myself = proto::Init::new();
+        myself.set_sub_net(c.get_v4().octets().to_vec());
+        myself.set_net_mask(c.get_v4_mask());
+        myself.set_name(c.name.clone());
+        myself
+    };
+    pub static ref SELF_SHARE: proto::Node = {
+        let c = Config::get();
+        let mut myself = proto::Node::new();
         myself.set_sub_net(c.get_v4().octets().to_vec());
         myself.set_net_mask(c.get_v4_mask());
         myself.set_name(c.name.clone());
@@ -61,7 +69,7 @@ impl Network {
         for host in &c.servers {
             let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
             sender_to_socket
-                .try_send(Message::InitNodeWrite(addr, SELF.clone()))
+                .try_send(Message::InitNodeWrite(addr, SELF_INIT.clone()))
                 .unwrap();
         }
 
@@ -97,7 +105,7 @@ impl Future for Network {
             match self.router_receiver.poll()? {
                 Async::Ready(Some(message)) => match message {
                     Message::DoNoting => {}
-                    Message::InterfaceWrite(mut package) => {
+                    Message::InterfaceWrite(package) => {
                         self.interface_send.try_send(package).unwrap();
                     }
                     Message::PackageShareWrite(addr, package, ttl) => self
@@ -123,6 +131,11 @@ impl Future for Network {
         loop {
             match self.socket_receiver.poll()? {
                 Async::Ready(Some(message)) => {
+                    if let Message::InitNodeRead(addr, _) = message {
+                        self.socket_send
+                            .try_send(Message::AddNodeWrite(vec![addr], SELF_SHARE.clone()))
+                            .unwrap();
+                    }
                     self.router_send.try_send(message).unwrap();
                 }
                 Async::Ready(None) => panic!(),
