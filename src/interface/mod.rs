@@ -1,7 +1,5 @@
 pub mod tuntap;
 
-pub use crate::interface::tuntap::Type;
-
 use crate::config::Config;
 use crate::interface::tuntap::TunTap;
 use crate::internal::error::Error;
@@ -11,7 +9,7 @@ use log::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::prelude::stream::Stream;
-use tokio::prelude::{Async, Future};
+use tokio::prelude::{task, Async, Future};
 use tokio::sync::mpsc;
 
 pub struct Device {
@@ -42,7 +40,6 @@ impl Future for Device {
     type Error = Error;
 
     fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
-        // recv from net
         loop {
             match self.receiver_net.poll()? {
                 Async::Ready(Some(p)) => {
@@ -57,26 +54,24 @@ impl Future for Device {
         }
 
         if !self.is_reading.load(Ordering::SeqCst) {
-            use tokio::prelude::task;
             self.is_reading.store(true, Ordering::SeqCst);
 
-            let is_reading = self.is_reading.clone();
             let mut sender = self.sender_net.clone();
+            let is_reading = self.is_reading.clone();
             let task = task::current();
 
             let buffer = Buffer::get();
-            let s = self.interface.read(buffer).and_then(move |s| {
+
+            tokio::spawn(self.interface.read(buffer).and_then(move |s| {
                 info!("read {} bytes from tuntap", s.len());
                 let package = Package::from_buffer(s);
-                sender.try_send(package).unwrap();
 
+                sender.try_send(package).unwrap();
                 is_reading.store(false, Ordering::SeqCst);
                 task.notify();
 
                 Ok(())
-            });
-
-            tokio::spawn(s);
+            }));
         }
 
         Ok(Async::NotReady)
