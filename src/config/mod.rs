@@ -1,4 +1,4 @@
-use crate::interface;
+use crate::interface::tuntap::Type;
 use clap::{App, Arg, ArgMatches};
 use log::*;
 use rand::distributions::Alphanumeric;
@@ -21,7 +21,7 @@ pub struct Config {
 
     /// device type, only `tun` or `tap`
     /// but tap is not implemented
-    pub device_type: interface::Type,
+    pub device_type: Type,
 
     /// listen port, both TCP and UDP will be listen
     pub port: u16,
@@ -97,7 +97,7 @@ impl Default for Config {
     fn default() -> Self {
         let c = Config {
             device_name: "ph0".to_string(),
-            device_type: interface::Type::Tun,
+            device_type: Type::Tun,
             port: 7654,
             subnet: "128.66.1.0/32".to_string(),
             ifup: "/bin/sh -c 'exit 1'".to_string(),
