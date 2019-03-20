@@ -1,22 +1,42 @@
-pub mod tuntap;
+pub mod tuntap_mio;
+pub mod tuntap_tokio;
 
 use crate::config::Config;
-use crate::interface::tuntap::TunTap;
+use crate::interface::tuntap_tokio::TunTap;
 use crate::internal::error::Error;
 use crate::internal::package::{Buffer, Package};
 use crate::utils::*;
 use log::*;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use std::collections::linked_list::LinkedList;
+use std::ffi::CString;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::prelude::stream::Stream;
-use tokio::prelude::{task, Async, Future};
+use tokio::prelude::{Async, Future};
 use tokio::sync::mpsc;
+
+lazy_static! {
+    static ref TUN_PATH: CString = CString::new("/dev/net/tun").unwrap();
+    static ref TAP_PATH: CString = CString::new("/dev/tap0").unwrap();
+}
+
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Copy, Clone)]
+pub enum Type {
+    /// Tun device read and write IP package
+    #[serde(rename = "tun")]
+    Tun,
+    /// Not unimplemented!
+    ///
+    /// Tap device read and write ethernet frame
+    #[serde(rename = "tap")]
+    Tap,
+}
 
 pub struct Device {
     interface: TunTap,
     receiver_net: mpsc::UnboundedReceiver<Package>,
     sender_net: mpsc::UnboundedSender<Package>,
-    is_reading: Arc<AtomicBool>,
+    buffer: LinkedList<Vec<u8>>,
 }
 
 impl Device {
@@ -30,7 +50,7 @@ impl Device {
             interface,
             receiver_net: rx,
             sender_net: tx,
-            is_reading: Arc::new(false.into()),
+            buffer: LinkedList::new(),
         }
     }
 }
@@ -43,35 +63,35 @@ impl Future for Device {
         loop {
             match self.receiver_net.poll()? {
                 Async::Ready(Some(p)) => {
-                    tokio::spawn(self.interface.write(p.raw_package).and_then(|v| {
-                        trace!("interface write {} bytes", v.len());
-                        Ok(())
-                    }));
+                    self.buffer.push_back(p.raw_package);
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
             }
         }
 
-        if !self.is_reading.load(Ordering::SeqCst) {
-            self.is_reading.store(true, Ordering::SeqCst);
+        loop {
+            let mut buffer = Buffer::get();
+            match self.interface.poll_read(buffer.as_mut_slice())? {
+                Async::Ready(nbytes) => {
+                    Buffer::set_len(buffer.as_mut(), nbytes);
+                    let package = Package::from_buffer(buffer);
+                    self.sender_net.try_send(package).unwrap();
+                }
+                Async::NotReady => break,
+            }
+        }
 
-            let mut sender = self.sender_net.clone();
-            let is_reading = self.is_reading.clone();
-            let task = task::current();
-
-            let buffer = Buffer::get();
-
-            tokio::spawn(self.interface.read(buffer).and_then(move |s| {
-                info!("read {} bytes from tuntap", s.len());
-                let package = Package::from_buffer(s);
-
-                sender.try_send(package).unwrap();
-                is_reading.store(false, Ordering::SeqCst);
-                task.notify();
-
-                Ok(())
-            }));
+        while let Some(buff) = self.buffer.pop_front() {
+            match self.interface.poll_write(&buff)? {
+                Async::Ready(nbytes) => {
+                    info!("write {} bytes to interface", nbytes);
+                }
+                Async::NotReady => {
+                    self.buffer.push_back(buff);
+                    break;
+                }
+            }
         }
 
         Ok(Async::NotReady)

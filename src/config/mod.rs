@@ -1,4 +1,4 @@
-use crate::interface::tuntap::Type;
+use crate::interface::Type;
 use clap::{App, Arg, ArgMatches};
 use log::*;
 use rand::distributions::Alphanumeric;
