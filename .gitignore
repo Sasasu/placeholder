@@ -20,4 +20,4 @@ Cargo.lock
 .idea
 
 *.yaml
-!config.example.yaml
+!phconfig.example.yaml
