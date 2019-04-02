@@ -41,8 +41,7 @@ impl Future for Router {
         loop {
             match self.rx.poll()? {
                 Async::Ready(Some(m)) => {
-                    let message = self.router_message(m);
-                    self.tx.try_send(message).unwrap();
+                    self.router_message(m);
                 }
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
@@ -53,7 +52,7 @@ impl Future for Router {
 }
 
 impl Router {
-    pub fn router_message(&self, m: Message) -> Message {
+    pub fn router_message(&mut self, m: Message) {
         match m {
             Message::PackageShareRead(package, ttl) => {
                 trace!("router get PackageShareRead read");
@@ -66,7 +65,9 @@ impl Router {
                                 package.destination_address(),
                                 addr
                             );
-                            Message::PackageShareWrite(*addr, package, ttl)
+                            self.tx
+                                .try_send(Message::PackageShareWrite(*addr, package, ttl))
+                                .unwrap();
                         }
                         Some(Host::Localhost) => {
                             info!(
@@ -74,7 +75,7 @@ impl Router {
                                 package.source_address(),
                                 package.destination_address()
                             );
-                            Message::InterfaceWrite(package)
+                            self.tx.try_send(Message::InterfaceWrite(package)).unwrap();
                         }
                         None | Some(Host::Unreachable) => {
                             info!(
@@ -82,7 +83,7 @@ impl Router {
                                 package.source_address(),
                                 package.destination_address()
                             );
-                            Message::DoNoting
+                            self.tx.try_send(Message::DoNoting).unwrap();
                         }
                     },
                     None => {
@@ -91,7 +92,7 @@ impl Router {
                             package.source_address(),
                             package.destination_address()
                         );
-                        Message::DoNoting
+                        self.tx.try_send(Message::DoNoting).unwrap();
                     }
                 }
             }
@@ -115,14 +116,17 @@ impl Router {
                     init.name,
                     Host::Socket(addr),
                 );
-                Message::AddNodeWrite(self.get_all_node(), add_node)
+                self.tx
+                    .try_send(Message::AddNodeWrite(self.get_all_node(), add_node))
+                    .unwrap();
             }
             Message::AddNodeRead(addr, mut node) => {
                 trace!("router get AddNode read from {}", addr);
 
                 if node.name == Config::get().name {
                     info!("receive myself");
-                    return Message::DoNoting;
+                    self.tx.try_send(Message::DoNoting).unwrap();
+                    return;
                 }
 
                 let source = {
@@ -147,20 +151,26 @@ impl Router {
 
                 let jump = node.get_jump() + 1;
                 node.set_jump(jump);
-                Message::AddNodeWrite(self.get_all_node(), node.clone())
+                self.tx
+                    .try_send(Message::AddNodeWrite(self.get_all_node(), node.clone()))
+                    .unwrap();
             }
             Message::DelNodeRead(addr, _) => {
                 trace!("router get DelNode read from {}", addr);
-                Message::DoNoting
+                self.tx.try_send(Message::DoNoting).unwrap();
             }
             Message::InterfaceRead(package) => {
                 trace!("router get interface read");
-                self.router_message(Message::PackageShareRead(package, 127))
+                self.router_message(Message::PackageShareRead(package, 127));
             }
-            Message::DoNoting => Message::DoNoting,
+            Message::DoNoting => {
+                self.tx.try_send(Message::DoNoting).unwrap();
+            }
             Message::PingPongRead(addr, _name) => {
                 info!("get PingPongRead from {}", addr);
-                Message::PingPongWrite(addr, Config::get().name.clone())
+                self.tx
+                    .try_send(Message::PingPongWrite(addr, Config::get().name.clone()))
+                    .unwrap();
             }
             Message::InterfaceWrite(_) => panic!("InterfaceWrite can not route"),
             Message::PingPongWrite(_, _) => panic!("PingPongWrite can not route"),
