@@ -54,7 +54,7 @@ impl Network {
             c.get_v4_mask() as u16,
             c.name.clone(),
             Host::Localhost,
-        );
+        ).unwrap();
 
         // prepare hello message to other node
         // clone for all servers
@@ -123,6 +123,11 @@ impl Future for Network {
         loop {
             match self.socket_receiver.poll()? {
                 Async::Ready(Some(message)) => {
+                    if let Message::AddNodeRead(addr, _) = message {
+                        self.socket_send
+                            .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
+                            .unwrap();
+                    }
                     self.router_send.try_send(message).unwrap();
                 }
                 Async::Ready(None) => panic!(),

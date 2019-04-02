@@ -96,11 +96,6 @@ impl Router {
                 }
             }
             Message::AddNodeRead(addr, mut node) => {
-                if node.name == Config::get().name {
-                    info!("receive myself");
-                    return;
-                }
-
                 let source = {
                     if node.jump == 0 {
                         addr
@@ -110,22 +105,22 @@ impl Router {
                     }
                 };
 
-                if !node.sub_net.is_empty() {
-                    let v = read_ip(&node.sub_net);
-                    self.insert_to_table(
-                        v,
-                        node.net_mask as u16,
-                        node.name.clone(),
-                        Host::Socket(source),
-                    );
-                }
-
-                let jump = node.get_jump() + 1;
-                node.set_jump(jump);
-                for node_addr in self.get_all_node() {
-                    self.tx
-                        .try_send(Message::AddNodeWrite(node_addr, node.clone()))
-                        .unwrap();
+                let v = read_ip(&node.sub_net);
+                if let Ok(()) = self.insert_to_table(
+                    v,
+                    node.net_mask as u16,
+                    node.name.clone(),
+                    Host::Socket(source),
+                ) {
+                    let jump = node.get_jump() + 1;
+                    node.set_jump(jump);
+                    node.set_real_ip(parse_ip(source.ip()));
+                    node.set_port(source.port() as i32);
+                    for node_addr in self.get_all_node() {
+                        self.tx
+                            .try_send(Message::AddNodeWrite(node_addr, node.clone()))
+                            .unwrap();
+                    }
                 }
             }
             Message::DelNodeRead(addr, _) => {
@@ -170,7 +165,13 @@ impl Router {
             .collect()
     }
 
-    pub fn insert_to_table(&self, dest: IpAddr, mask: u16, name: String, host: Host) {
+    pub fn insert_to_table(
+        &self,
+        dest: IpAddr,
+        mask: u16,
+        name: String,
+        host: Host,
+    ) -> Result<(), ()> {
         info!(
             "add {}/{} -> {}:\"{:?}\" to router table",
             dest, mask, name, host
@@ -190,7 +191,6 @@ impl Router {
                     .insert(v6_addr.into(), mask, name, host)
             }
         }
-        .unwrap()
     }
 
     pub fn find_in_table(&self, package: &Package) -> Option<Peer> {
@@ -225,10 +225,17 @@ fn read_ip(v: &[u8]) -> IpAddr {
             v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
             v[14], v[15],
         ])
-        .into(),
+            .into(),
         _ => {
             error!("try read with length {}", v.len());
             unreachable!()
         }
+    }
+}
+
+fn parse_ip(v: IpAddr) -> Vec<u8> {
+    match v {
+        IpAddr::V4(v4) => v4.octets().to_vec(),
+        IpAddr::V6(v6) => v6.octets().to_vec()
     }
 }
