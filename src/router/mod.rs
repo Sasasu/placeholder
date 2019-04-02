@@ -57,7 +57,7 @@ impl Router {
                 trace!("router get PackageShareRead read");
                 match self.find_in_table(&package) {
                     Some(peer) => match peer.get_host() {
-                        Some(Host::Socket(addr)) => {
+                        Host::Socket(addr) => {
                             info!(
                                 "{} -> {} route to real address {}",
                                 package.source_address(),
@@ -65,10 +65,10 @@ impl Router {
                                 addr
                             );
                             self.tx
-                                .try_send(Message::PackageShareWrite(*addr, package, ttl))
+                                .try_send(Message::PackageShareWrite(addr, package, ttl))
                                 .unwrap();
                         }
-                        Some(Host::Localhost) => {
+                        Host::Localhost => {
                             info!(
                                 "{} -> {} route to Self",
                                 package.source_address(),
@@ -76,7 +76,7 @@ impl Router {
                             );
                             self.tx.try_send(Message::InterfaceWrite(package)).unwrap();
                         }
-                        None | Some(Host::Unreachable) => {
+                        Host::Unreachable => {
                             info!(
                                 "{} -> {} can'find edge to reach, drop package",
                                 package.source_address(),
@@ -96,8 +96,6 @@ impl Router {
                 }
             }
             Message::AddNodeRead(addr, mut node) => {
-                trace!("router get AddNode read from {}", addr);
-
                 if node.name == Config::get().name {
                     info!("receive myself");
                     return;
@@ -112,7 +110,6 @@ impl Router {
                     }
                 };
 
-                // 1. insert subnet
                 if !node.sub_net.is_empty() {
                     let v = read_ip(&node.sub_net);
                     self.insert_to_table(
@@ -165,11 +162,11 @@ impl Router {
         v.iter()
             .chain(o.iter())
             .map(|p| match p.get_host() {
-                Some(Host::Socket(addr)) => Some(addr),
-                None | Some(Host::Unreachable) | Some(Host::Localhost) => None,
+                Host::Socket(addr) => Some(addr),
+                Host::Unreachable | Host::Localhost => None,
             })
             .filter(|x| !x.is_none())
-            .map(|x| *x.unwrap())
+            .map(|x| x.unwrap())
             .collect()
     }
 
@@ -178,23 +175,19 @@ impl Router {
             "add {}/{} -> {}:\"{:?}\" to router table",
             dest, mask, name, host
         );
-        let peer = Peer {
-            name,
-            host: vec![host],
-        };
 
         match dest {
             IpAddr::V4(v4_addr) => {
                 self.ipv4_table
                     .write()
                     .unwrap()
-                    .insert(v4_addr.into(), mask, peer)
+                    .insert(v4_addr.into(), mask, name, host)
             }
             IpAddr::V6(v6_addr) => {
                 self.ipv6_table
                     .write()
                     .unwrap()
-                    .insert(v6_addr.into(), mask, peer)
+                    .insert(v6_addr.into(), mask, name, host)
             }
         }
         .unwrap()

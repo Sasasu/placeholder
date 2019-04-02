@@ -1,4 +1,4 @@
-digraph net {
+digraph main {
     init -> inited [label = "`init_node` send" color=red]
     inited -> package_received [label = "`package` receive" color=blue]
     package_received -> inited [label = "`package` send" color=red]
@@ -18,4 +18,7 @@ digraph net {
     insert_route_table
     add_node_received
     add_node_broadcast
+}
+
+digraph timer {
 }
