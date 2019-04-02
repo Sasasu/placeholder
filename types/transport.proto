@@ -27,15 +27,6 @@ message Node {
   int32 port = 8;
 }
 
-// init message, the first message sent by new node
-// when node receive this message, send all peer by `add_node` and broadcast
-// this node using `add_node`
-message Init {
-  bytes sub_net = 1;
-  uint32 net_mask = 2;
-  string name = 5;
-}
-
 message PingPong { string name = 1; }
 
 message Payload {
@@ -46,7 +37,6 @@ message Payload {
     Node add_node = 3;
     // del some node (by name)
     Node del_node = 4;
-    Init init_node = 5;
     // tell this node, what node i known
     PingPong ping = 7;
   }

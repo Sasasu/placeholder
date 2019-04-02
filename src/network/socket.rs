@@ -50,6 +50,7 @@ impl Socket {
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> Result<(), std::io::Error> {
+        info!("connect {}", addr);
         match addr.ip() {
             IpAddr::V4(_) => self.v4.connect(addr),
             IpAddr::V6(_) => self.v6.connect(addr),
@@ -98,16 +99,11 @@ impl Future for Socket {
             match self.rx.poll()? {
                 Async::Ready(None) => panic!(),
                 Async::Ready(Some(message)) => {
-                    if let Message::InitNodeWrite(addr, _) = message {
-                        info!("{} is initializing myself", addr);
+                    if let Message::AddNodeWrite(addr, _) = message {
                         self.connect(&addr).unwrap();
                     }
 
-                    let (addr, buffer) = message.write_bytes();
-                    for a in addr {
-                        // TODO do not copy
-                        self.buffer.push_back((a, buffer.clone()));
-                    }
+                    self.buffer.push_back(message.write_bytes());
                 }
                 Async::NotReady => break,
             }

@@ -4,7 +4,6 @@ pub mod table;
 pub use self::peer::{Host, Peer};
 pub use self::table::{LikeRouter, Table};
 use crate::config::Config;
-use crate::generated::transport::Node;
 use crate::internal::message::Message;
 use crate::internal::package::Package;
 use log::*;
@@ -96,36 +95,11 @@ impl Router {
                     }
                 }
             }
-            Message::InitNodeRead(addr, init) => {
-                trace!("router get InitNodeRead from {}", addr);
-                let mut add_node = Node::new();
-                add_node.set_jump(1);
-                add_node.set_name(init.name.clone());
-                add_node.set_sub_net(init.sub_net);
-                add_node.set_net_mask(init.net_mask);
-
-                add_node.set_port(addr.port().into());
-                match addr.ip() {
-                    IpAddr::V6(v6) => add_node.set_real_ip(v6.octets().to_vec()),
-                    IpAddr::V4(v4) => add_node.set_real_ip(v4.octets().to_vec()),
-                }
-
-                self.insert_to_table(
-                    read_ip(&add_node.sub_net),
-                    init.net_mask as u16,
-                    init.name,
-                    Host::Socket(addr),
-                );
-                self.tx
-                    .try_send(Message::AddNodeWrite(self.get_all_node(), add_node))
-                    .unwrap();
-            }
             Message::AddNodeRead(addr, mut node) => {
                 trace!("router get AddNode read from {}", addr);
 
                 if node.name == Config::get().name {
                     info!("receive myself");
-                    self.tx.try_send(Message::DoNoting).unwrap();
                     return;
                 }
 
@@ -151,9 +125,11 @@ impl Router {
 
                 let jump = node.get_jump() + 1;
                 node.set_jump(jump);
-                self.tx
-                    .try_send(Message::AddNodeWrite(self.get_all_node(), node.clone()))
-                    .unwrap();
+                for node_addr in self.get_all_node() {
+                    self.tx
+                        .try_send(Message::AddNodeWrite(node_addr, node.clone()))
+                        .unwrap();
+                }
             }
             Message::DelNodeRead(addr, _) => {
                 trace!("router get DelNode read from {}", addr);
@@ -177,7 +153,6 @@ impl Router {
             Message::AddNodeWrite(_, _) => panic!("AddNodeWrite can not route"),
             Message::PackageShareWrite(_, _, _) => panic!("PackageShareWrite can not route"),
             Message::DelNodeWrite(_, _) => panic!("DelNodeWrite can not route"),
-            Message::InitNodeWrite(_, _) => panic!("InitNodeWrite can not route"),
         }
     }
 }

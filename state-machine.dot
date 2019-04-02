@@ -1,0 +1,21 @@
+digraph net {
+    init -> inited [label = "`init_node` send" color=red]
+    inited -> package_received [label = "`package` receive" color=blue]
+    package_received -> inited [label = "`package` send" color=red]
+    package_received -> interface_write [label = "`package` to myself"]
+    interface_write -> inited
+
+    inited -> add_node_received [label = "`add_node` receive" color=blue]
+    add_node_received -> insert_route_table
+    insert_route_table -> inited [label = "no change"]
+    insert_route_table -> add_node_broadcast [label = "boardcast `add_node`" color=red]
+    add_node_broadcast -> inited [label = "`add_node` myself to sender" color=red]
+
+    init
+    inited
+    package_received
+    interface_write
+    insert_route_table
+    add_node_received
+    add_node_broadcast
+}

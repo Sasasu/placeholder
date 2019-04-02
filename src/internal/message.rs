@@ -1,5 +1,5 @@
 use super::package::Package;
-use crate::generated::transport::{Init, Node, PackageShard, Payload, PingPong};
+use crate::generated::transport::{Node, PackageShard, Payload, PingPong};
 use log::*;
 use std::net::SocketAddr;
 
@@ -13,14 +13,10 @@ pub enum Message {
     PackageShareWrite(SocketAddr, Package, u32),
 
     AddNodeRead(SocketAddr, Node),
-    // always bordcast
-    AddNodeWrite(Vec<SocketAddr>, Node),
+    AddNodeWrite(SocketAddr, Node),
 
     DelNodeRead(SocketAddr, Node),
     DelNodeWrite(SocketAddr, Node),
-
-    InitNodeRead(SocketAddr, Init),
-    InitNodeWrite(SocketAddr, Init),
 
     PingPongRead(SocketAddr, String),
     PingPongWrite(SocketAddr, String),
@@ -32,34 +28,30 @@ impl Message {
     /// message to protobuf message
     ///
     /// only support network and router
-    pub fn write_bytes(self) -> (Vec<SocketAddr>, Vec<u8>) {
+    pub fn write_bytes(self) -> (SocketAddr, Vec<u8>) {
         let mut payload = Payload::new();
-        let mut addrs = vec![];
+        let addr;
         match self {
             Message::PackageShareWrite(a, package, ttl) => {
                 let mut package_shard = PackageShard::new();
                 package_shard.set_package(package.raw_package);
                 package_shard.set_ttl(ttl);
                 payload.set_package(package_shard);
-                addrs.push(a);
+                addr = a;
             }
-            Message::AddNodeWrite(mut a, node) => {
+            Message::AddNodeWrite(a, node) => {
                 payload.set_add_node(node);
-                addrs.append(&mut a);
+                addr = a;
             }
             Message::DelNodeWrite(a, node) => {
                 payload.set_del_node(node);
-                addrs.push(a);
-            }
-            Message::InitNodeWrite(a, init) => {
-                payload.set_init_node(init);
-                addrs.push(a);
+                addr = a;
             }
             Message::PingPongWrite(a, name) => {
                 let mut wrapper = PingPong::new();
                 wrapper.set_name(name);
                 payload.set_ping(wrapper);
-                addrs.push(a);
+                addr = a;
             }
             Message::InterfaceRead(_) => panic!("can not write InterfaceRead to bytes"),
             Message::InterfaceWrite(_) => panic!("can not write InterfaceWrite to bytes"),
@@ -68,12 +60,11 @@ impl Message {
             Message::AddNodeRead(_, _) => panic!("can not write AddNodeRead to bytes"),
             Message::PackageShareRead(_, _) => panic!("can not write PackageShareRead to bytes"),
             Message::DelNodeRead(_, _) => panic!("can not write DelNodeRead to bytes"),
-            Message::InitNodeRead(_, _) => panic!("can not write InitNodeWrite to bytes"),
         };
         let bytes = (Box::new(payload) as Box<protobuf::Message>)
             .write_to_bytes()
             .unwrap();
-        (addrs, bytes)
+        (addr, bytes)
     }
 
     /// protobuf message to message
@@ -98,7 +89,6 @@ impl Message {
             }
             Some(PayloadOneof::add_node(node)) => Message::AddNodeRead(addr, node),
             Some(PayloadOneof::del_node(node)) => Message::DelNodeRead(addr, node),
-            Some(PayloadOneof::init_node(node)) => Message::InitNodeRead(addr, node),
         }
     }
 }
