@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::internal::error::Error;
 use crate::internal::message::Message;
 use crate::internal::package::Buffer;
 use log::*;
@@ -60,7 +59,7 @@ impl Socket {
 
 impl Future for Socket {
     type Item = ();
-    type Error = Error;
+    type Error = ();
 
     fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
         loop {
@@ -84,31 +83,35 @@ impl Future for Socket {
 
         loop {
             let mut buffer = Buffer::get();
-            match self.v6.poll_recv_from(buffer.as_mut_slice())? {
-                Async::Ready((read_size, addr)) => {
+            match self.v6.poll_recv_from(buffer.as_mut_slice()) {
+                Ok(Async::Ready((read_size, addr))) => {
                     Buffer::set_len(buffer.as_mut(), read_size);
                     info!("receive {} bytes from {}", read_size, addr);
                     let message_to_router = Message::from_protobuf(addr, buffer);
                     self.tx.try_send(message_to_router).unwrap();
                 }
-                Async::NotReady => {
+                Ok(Async::NotReady) => {
                     Buffer::put_back(buffer);
                     break;
+                }
+                Err(e) => {
+                    error!("{:?}", e);
                 }
             };
         }
 
         loop {
-            match self.rx.poll()? {
-                Async::Ready(None) => panic!(),
-                Async::Ready(Some(message)) => {
+            match self.rx.poll() {
+                Ok(Async::Ready(None)) => panic!(),
+                Ok(Async::Ready(Some(message))) => {
                     if let Message::AddNodeWrite(addr, _) = message {
                         self.connect(&addr).unwrap();
                     }
 
                     self.buffer.push_back(message.write_bytes());
                 }
-                Async::NotReady => break,
+                Ok(Async::NotReady) => break,
+                Err(e) => error!("{:?}", e)
             }
         }
 
@@ -121,12 +124,13 @@ impl Future for Socket {
                         IpAddr::V4(_) => &mut self.v4,
                         IpAddr::V6(_) => &mut self.v6,
                     };
-                    match socket.poll_send_to(&buffer, &addr)? {
-                        Async::Ready(size) => info!("write {} bytes to {}", size, &addr),
-                        Async::NotReady => {
+                    match socket.poll_send_to(&buffer, &addr) {
+                        Ok(Async::Ready(size)) => info!("write {} bytes to {}", size, &addr),
+                        Ok(Async::NotReady) => {
                             self.buffer.push_back((addr, buffer));
                             break;
                         }
+                        Err(e) => error!("{:?}", e)
                     };
                 }
             }

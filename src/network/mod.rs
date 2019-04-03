@@ -77,12 +77,7 @@ impl Network {
             })
         }));
 
-        tokio::spawn(lazy(|| {
-            socket.map_err(|e| {
-                error!("{:?}", e);
-                panic!(e);
-            })
-        }));
+        tokio::spawn(socket);
 
         Network {
             interface_receiver: rx,
