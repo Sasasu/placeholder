@@ -50,10 +50,8 @@ impl Socket {
 
     pub fn connect(&self, addr: &SocketAddr) -> Result<(), std::io::Error> {
         info!("connect {}", addr);
-        match addr.ip() {
-            IpAddr::V4(_) => self.v4.connect(addr),
-            IpAddr::V6(_) => self.v6.connect(addr),
-        }
+        // TODO multiple udp fd
+        Ok(())
     }
 }
 
@@ -111,7 +109,7 @@ impl Future for Socket {
                     self.buffer.push_back(message.write_bytes());
                 }
                 Ok(Async::NotReady) => break,
-                Err(e) => error!("{:?}", e)
+                Err(e) => error!("{:?}", e),
             }
         }
 
@@ -130,7 +128,7 @@ impl Future for Socket {
                             self.buffer.push_back((addr, buffer));
                             break;
                         }
-                        Err(e) => error!("{:?}", e)
+                        Err(e) => error!("{:?}", e),
                     };
                 }
             }

@@ -102,8 +102,15 @@ impl Router {
                     return;
                 }
 
+                if node.jump == -1 {
+                    node.jump = 0;
+                    self.tx
+                        .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
+                        .unwrap();
+                }
+
                 let source = {
-                    if node.jump == 0 {
+                    if node.real_ip.len() == 0 {
                         addr
                     } else {
                         let ip = read_ip(&node.real_ip);
@@ -128,9 +135,6 @@ impl Router {
                             .try_send(Message::AddNodeWrite(node_addr, node.clone()))
                             .unwrap();
                     }
-                    self.tx
-                        .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
-                        .unwrap();
                 }
             }
             Message::DelNodeRead(addr, _) => {

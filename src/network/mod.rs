@@ -25,6 +25,15 @@ lazy_static! {
         myself.set_jump(0);
         myself
     };
+    pub static ref SELF_INIT: proto::Node = {
+        let c = Config::get();
+        let mut myself = proto::Node::new();
+        myself.set_sub_net(c.get_v4().octets().to_vec());
+        myself.set_net_mask(c.get_v4_mask());
+        myself.set_name(c.name.clone());
+        myself.set_jump(-1);
+        myself
+    };
 }
 pub struct Network {
     interface_receiver: mpsc::UnboundedReceiver<Package>,
@@ -65,7 +74,7 @@ impl Network {
             if host.name != c.name {
                 let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
                 sender_to_socket
-                    .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
+                    .try_send(Message::AddNodeWrite(addr, SELF_INIT.clone()))
                     .unwrap();
             }
         }
