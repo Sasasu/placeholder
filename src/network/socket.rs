@@ -65,16 +65,19 @@ impl Future for Socket {
     fn poll(&mut self) -> Result<Async<Self::Item>, Self::Error> {
         loop {
             let mut buffer = Buffer::get();
-            match self.v4.poll_recv_from(buffer.as_mut_slice())? {
-                Async::Ready((read_size, addr)) => {
+            match self.v4.poll_recv_from(buffer.as_mut_slice()) {
+                Ok(Async::Ready((read_size, addr))) => {
                     Buffer::set_len(buffer.as_mut(), read_size);
                     info!("receive {} bytes from {}", read_size, addr);
                     let message_to_router = Message::from_protobuf(addr, buffer);
                     self.tx.try_send(message_to_router).unwrap();
                 }
-                Async::NotReady => {
+                Ok(Async::NotReady) => {
                     Buffer::put_back(buffer);
                     break;
+                }
+                Err(e) => {
+                    error!("{:?}", e);
                 }
             };
         }

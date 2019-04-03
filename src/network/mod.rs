@@ -6,6 +6,7 @@ use crate::internal::message::Message;
 use crate::internal::package::Package;
 use crate::network::socket::Socket;
 use crate::router::{Host, Router};
+use log::*;
 use std::convert::From;
 use std::io;
 use std::net::SocketAddr;
@@ -49,30 +50,36 @@ impl Network {
         let socket = Socket::new(_s, _r);
 
         // add my self to router table
-        router.insert_to_table(
-            c.get_v4().into(),
-            c.get_v4_mask() as u16,
-            c.name.clone(),
-            Host::Localhost,
-        ).unwrap();
+        router
+            .insert_to_table(
+                c.get_v4().into(),
+                c.get_v4_mask() as u16,
+                c.name.clone(),
+                Host::Localhost,
+            )
+            .unwrap();
 
         // prepare hello message to other node
         // clone for all servers
         for host in &c.servers {
-            let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
-            sender_to_socket
-                .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
-                .unwrap();
+            if host.name != c.name {
+                let addr = SocketAddr::new(host.address.parse().unwrap(), host.port);
+                sender_to_socket
+                    .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
+                    .unwrap();
+            }
         }
 
         tokio::spawn(lazy(|| {
             router.map_err(|e| {
+                error!("{:?}", e);
                 panic!(e);
             })
         }));
 
         tokio::spawn(lazy(|| {
             socket.map_err(|e| {
+                error!("{:?}", e);
                 panic!(e);
             })
         }));
@@ -122,14 +129,7 @@ impl Future for Network {
 
         loop {
             match self.socket_receiver.poll()? {
-                Async::Ready(Some(message)) => {
-                    if let Message::AddNodeRead(addr, _) = message {
-                        self.socket_send
-                            .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
-                            .unwrap();
-                    }
-                    self.router_send.try_send(message).unwrap();
-                }
+                Async::Ready(Some(message)) => self.router_send.try_send(message).unwrap(),
                 Async::Ready(None) => panic!(),
                 Async::NotReady => break,
             }

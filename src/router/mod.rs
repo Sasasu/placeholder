@@ -6,6 +6,7 @@ pub use self::table::{LikeRouter, Table};
 use crate::config::Config;
 use crate::internal::message::Message;
 use crate::internal::package::Package;
+use crate::network::SELF_SHARE;
 use log::*;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::RwLock;
@@ -96,6 +97,11 @@ impl Router {
                 }
             }
             Message::AddNodeRead(addr, mut node) => {
+                if node.name == Config::get().name {
+                    info!("get myself");
+                    return;
+                }
+
                 let source = {
                     if node.jump == 0 {
                         addr
@@ -116,11 +122,15 @@ impl Router {
                     node.set_jump(jump);
                     node.set_real_ip(parse_ip(source.ip()));
                     node.set_port(source.port() as i32);
+                    info!("broadcast to all {:?}", node);
                     for node_addr in self.get_all_node() {
                         self.tx
                             .try_send(Message::AddNodeWrite(node_addr, node.clone()))
                             .unwrap();
                     }
+                    self.tx
+                        .try_send(Message::AddNodeWrite(addr, SELF_SHARE.clone()))
+                        .unwrap();
                 }
             }
             Message::DelNodeRead(addr, _) => {
@@ -225,7 +235,7 @@ fn read_ip(v: &[u8]) -> IpAddr {
             v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
             v[14], v[15],
         ])
-            .into(),
+        .into(),
         _ => {
             error!("try read with length {}", v.len());
             unreachable!()
@@ -236,6 +246,6 @@ fn read_ip(v: &[u8]) -> IpAddr {
 fn parse_ip(v: IpAddr) -> Vec<u8> {
     match v {
         IpAddr::V4(v4) => v4.octets().to_vec(),
-        IpAddr::V6(v6) => v6.octets().to_vec()
+        IpAddr::V6(v6) => v6.octets().to_vec(),
     }
 }

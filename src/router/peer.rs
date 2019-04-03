@@ -1,3 +1,4 @@
+use log::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::net::SocketAddr;
@@ -35,6 +36,7 @@ impl Peer {
     }
 
     pub fn add_host(&mut self, host: Host) -> Result<(), ()> {
+        info!("add host {:?} to {}", host, self.name);
         match host {
             Host::Localhost => {
                 for i in self.host.iter() {
@@ -42,7 +44,7 @@ impl Peer {
                         return Err(());
                     }
                 }
-                self.host.push(PeerInternal::Localhost)
+                self.host.push(PeerInternal::Localhost);
             }
             Host::Unreachable => {
                 for i in self.host.iter() {
@@ -50,19 +52,19 @@ impl Peer {
                         return Err(());
                     }
                 }
-                self.host.push(PeerInternal::Unreachable)
+                self.host.push(PeerInternal::Unreachable);
             }
             Host::Socket(addr) => {
                 for i in self.host.iter() {
                     if let PeerInternal::Socket(a, mut rank) = i {
-                        if a == &addr {
+                        if *a == addr {
                             use std::ops::AddAssign;
                             rank.add_assign(1);
                             return Err(());
                         }
                     }
                 }
-                self.host.push(PeerInternal::Socket(addr, 1))
+                self.host.push(PeerInternal::Socket(addr, 1));
             }
         }
         Ok(())
