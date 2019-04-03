@@ -25,14 +25,14 @@ impl Peer {
     }
 
     pub fn get_host(&self) -> Host {
-        match self.host.peek() {
-            None => Host::Unreachable,
-            Some(t) => match t {
-                PeerInternal::Localhost => Host::Localhost,
-                PeerInternal::Unreachable => Host::Unreachable,
-                PeerInternal::Socket(addr, _) => Host::Socket(addr.clone()),
-            },
-        }
+        if let Some(t) = self.host.peek() {
+            match t {
+                PeerInternal::Localhost => return Host::Localhost,
+                PeerInternal::Unreachable => return Host::Unreachable,
+                PeerInternal::Socket(addr, _) => return Host::Socket(*addr),
+            }
+        };
+        Host::Unreachable
     }
 
     pub fn add_host(&mut self, host: Host) -> Result<(), ()> {
