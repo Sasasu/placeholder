@@ -20,4 +20,5 @@ Cargo.lock
 .idea
 
 *.yaml
+*.jsonnet
 !phconfig.example.yaml

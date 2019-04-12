@@ -90,7 +90,7 @@ impl Read for TunTap {
 
 impl Write for TunTap {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Ok(0);
         }
 

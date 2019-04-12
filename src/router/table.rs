@@ -47,7 +47,7 @@ impl Table {
         for (_, node) in self.table.iter() {
             match node.get_host() {
                 Host::Localhost | Host::Unreachable => {}
-                Host::Socket(addr) => v.push(addr.clone()),
+                Host::Socket(addr) => v.push(addr),
             }
         }
         v
@@ -110,7 +110,6 @@ impl LikeRouter for Table {
 }
 
 fn encode_bytes(ip: IpAddr) -> Vec<u8> {
-    use std::net::IpAddr;
     match ip {
         IpAddr::V4(ip) => {
             let mut v = Vec::with_capacity(4 * 8);

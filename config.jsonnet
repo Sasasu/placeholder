@@ -27,25 +27,18 @@ local get_config(servers, server) = {
 
 local servers = [
   {
-    address: '192.168.56.2',
+    address: '192.168.56.3',
     port: 5432,
     name: 'node0',
     net: '10.1.0.1/16',
     subnet: '10.1.0.1/24',
   },
   {
-    address: '192.168.56.14',
+    address: '192.168.56.4',
     port: 5432,
     name: 'node1',
     net: '10.1.1.1/16',
     subnet: '10.1.1.1/24',
-  },
-  {
-    address: '192.168.56.15',
-    port: 5432,
-    name: 'node2',
-    net: '10.1.2.1/16',
-    subnet: '10.1.2.1/24',
   },
 
 ];
@@ -53,5 +46,4 @@ local servers = [
 {
   'node0.yaml': get_config(servers, servers[0]),
   'node1.yaml': get_config(servers, servers[1]),
-  'node2.yaml': get_config(servers, servers[2]),
 }
