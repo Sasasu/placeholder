@@ -1,24 +1,48 @@
 digraph main {
-    init -> inited [label = "`init_node` send" color=red]
-    inited -> package_received [label = "`package` receive" color=blue]
-    package_received -> inited [label = "`package` send" color=red]
-    package_received -> interface_write [label = "`package` to myself"]
-    interface_write -> inited
+    INIT -> INITED
 
-    inited -> add_node_received [label = "`add_node` receive" color=blue]
-    add_node_received -> insert_route_table
-    insert_route_table -> inited [label = "no change"]
-    insert_route_table -> add_node_broadcast [label = "boardcast `add_node`" color=red]
-    add_node_broadcast -> inited [label = "`add_node` myself to sender" color=red]
+    INITED -> PACKAGE_RECEIVED
+    INITED -> ADD_NODE_RECEIVED
+    INITED -> DEL_NODE_RECEIVED
+    INITED -> INTERFACE_READ
+    INITED -> PING_RECEIVED
 
-    init
-    inited
-    package_received
-    interface_write
-    insert_route_table
-    add_node_received
-    add_node_broadcast
-}
+    PACKAGE_RECEIVED -> INTERFACE_WRITE[color=blue]
+    PACKAGE_RECEIVED -> PACKAGE_SEND[color=red]
 
-digraph timer {
+    ADD_NODE_RECEIVED -> ADD_NODE_SEND[color=blue]
+    ADD_NODE_RECEIVED -> INITED[color=red]
+
+    DEL_NODE_RECEIVED -> DEL_NODE_SEND[color=blue]
+    DEL_NODE_RECEIVED -> INITED[color=red]
+
+    PING_RECEIVED -> PING_SEND
+
+    INTERFACE_READ -> PACKAGE_SEND
+    INTERFACE_WRITE -> INITED
+
+    SEND_PACKAGE -> INITED
+
+    ADD_NODE_SEND -> INITED
+    DEL_NODE_SEND -> INITED
+    PING_SEND -> INITED
+    PACKAGE_SEND -> INITED
+
+    INIT
+    INITED
+
+    PACKAGE_RECEIVED
+    ADD_NODE_RECEIVED
+    DEL_NODE_RECEIVED
+    PING_RECEIVED
+
+    INTERFACE_READ
+    INTERFACE_WRITE
+
+    SEND_PACKAGE
+
+    ADD_NODE_SEND
+    DEL_NODE_SEND
+    PING_SEND
+    PACKAGE_SEND
 }
